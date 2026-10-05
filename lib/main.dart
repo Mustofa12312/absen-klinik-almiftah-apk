@@ -4,6 +4,8 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'services/device_service.dart';
 import 'services/location_service.dart';
+import 'screens/history_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/request_screen.dart';
 
 void main() async {
@@ -13,14 +15,12 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    
-    // Inisialisasi Firebase App Check (BR-04)
     await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.debug, // Ganti PlayIntegrity untuk production
+      androidProvider: AndroidProvider.debug,
       appleProvider: AppleProvider.debug,
     );
   } catch (e) {
-    debugPrint('Firebase initialization failed (dummy keys used): $e');
+    debugPrint('Firebase init failed (dummy keys): $e');
   }
 
   runApp(const KlinikAlmiftahApp());
@@ -33,117 +33,65 @@ class KlinikAlmiftahApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Klinik Al-Miftah',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF138D5B)),
         useMaterial3: true,
+        fontFamily: 'sans-serif',
       ),
       home: const SplashScreen(),
     );
   }
 }
 
+// ===== SPLASH SCREEN =====
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
-
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeIn;
+
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    _controller.forward();
+
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      }
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.local_hospital, size: 80, color: Color(0xFF138D5B)),
-            SizedBox(height: 20),
-            Text(
-              'Klinik Al-Miftah',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF138D5B),
-              ),
-            ),
-            SizedBox(height: 10),
-            CircularProgressIndicator(),
-          ],
-        ),
-      ),
-    );
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
-}
-
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+      backgroundColor: const Color(0xFF138D5B),
+      body: FadeTransition(
+        opacity: _fadeIn,
+        child: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.local_hospital, size: 60, color: Color(0xFF138D5B)),
-              const SizedBox(height: 32),
-              const Text(
-                'Selamat Datang',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Silakan masuk dengan akun pegawai Anda',
-                style: TextStyle(color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const DashboardScreen()),
-                  );
-                },
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('MASUK', style: TextStyle(fontSize: 16)),
-              ),
+              Icon(Icons.local_hospital, size: 80, color: Colors.white),
+              SizedBox(height: 16),
+              Text('Klinik Al-Miftah', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+              SizedBox(height: 8),
+              Text('Sistem Absensi Pegawai', style: TextStyle(fontSize: 14, color: Colors.white70)),
+              SizedBox(height: 48),
+              CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
             ],
           ),
         ),
@@ -152,9 +100,218 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
+// ===== LOGIN SCREEN =====
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  bool _obscure = true;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  void _login() {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainShell()));
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 48),
+                const Icon(Icons.local_hospital, size: 64, color: Color(0xFF138D5B)),
+                const SizedBox(height: 24),
+                const Text('Selamat Datang', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                Text('Masuk dengan akun pegawai Anda', style: TextStyle(color: Colors.grey.shade600), textAlign: TextAlign.center),
+                const SizedBox(height: 48),
+                TextFormField(
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (v) => (v == null || !v.contains('@')) ? 'Masukkan email valid' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passCtrl,
+                  obscureText: _obscure,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (v) => (v == null || v.length < 6) ? 'Password minimal 6 karakter' : null,
+                ),
+                const SizedBox(height: 32),
+                FilledButton(
+                  onPressed: _loading ? null : _login,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: const Color(0xFF138D5B),
+                  ),
+                  child: _loading
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('MASUK', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ===== MAIN SHELL dengan BottomNavigationBar (PRD Bab 4) =====
+class MainShell extends StatefulWidget {
+  const MainShell({super.key});
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int _currentIndex = 0;
+
+  final List<Widget> _pages = [
+    const DashboardScreen(),
+    const HistoryScreen(),
+    const RequestHubScreen(),
+    const ProfileScreen(),
+  ];
+
+  final List<BottomNavigationBarItem> _navItems = [
+    const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
+    const BottomNavigationBarItem(icon: Icon(Icons.history_outlined), activeIcon: Icon(Icons.history), label: 'Riwayat'),
+    const BottomNavigationBarItem(icon: Icon(Icons.description_outlined), activeIcon: Icon(Icons.description), label: 'Pengajuan'),
+    const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(index: _currentIndex, children: _pages),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        selectedItemColor: const Color(0xFF138D5B),
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        items: _navItems,
+      ),
+    );
+  }
+}
+
+// ===== REQUEST HUB — Pilih jenis pengajuan (PRD Bab 24-27) =====
+class RequestHubScreen extends StatelessWidget {
+  const RequestHubScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      {'title': 'Izin',     'icon': Icons.event_busy_outlined,      'type': 'Izin',    'color': Colors.blue},
+      {'title': 'Sakit',    'icon': Icons.sick_outlined,             'type': 'Sakit',   'color': Colors.red},
+      {'title': 'Cuti',     'icon': Icons.beach_access_outlined,     'type': 'Cuti',    'color': Colors.teal},
+      {'title': 'Dinas',    'icon': Icons.work_outline,              'type': 'Dinas',   'color': Colors.orange},
+      {'title': 'Koreksi',  'icon': Icons.edit_calendar_outlined,   'type': 'Koreksi', 'color': Colors.purple},
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pengajuan'),
+        backgroundColor: const Color(0xFF138D5B),
+        foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+      ),
+      backgroundColor: Colors.grey.shade50,
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text('Pilih Jenis Pengajuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+          const SizedBox(height: 16),
+          ...items.map((item) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(item['icon'] as IconData, color: item['color'] as Color, size: 24),
+                ),
+                title: Text('Pengajuan ${item['title']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(_getSubtitle(item['type'] as String), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => RequestScreen(requestType: item['type'] as String),
+                  ));
+                },
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  String _getSubtitle(String type) {
+    switch (type) {
+      case 'Izin':    return 'Pengajuan izin tidak masuk kerja';
+      case 'Sakit':   return 'Laporan sakit dengan atau tanpa surat dokter';
+      case 'Cuti':    return 'Pengajuan cuti beberapa hari (BR-19)';
+      case 'Dinas':   return 'Tugas luar klinik / perjalanan dinas';
+      case 'Koreksi': return 'Koreksi lupa absen masuk / pulang (BR-21)';
+      default:        return '';
+    }
+  }
+}
+
+// ===== DASHBOARD SCREEN =====
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
-
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -163,267 +320,213 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = false;
   String _statusAbsensi = 'Belum Absen';
   Color _statusColor = Colors.orange;
-  
   bool _hasCheckedIn = false;
   String? _attendanceId;
 
-  // Mock data untuk Cabang HQ-01 (Klinik Al-Miftah Pusat)
   final double branchLat = -6.2088;
   final double branchLng = 106.8456;
   final double branchRadius = 100.0;
-  
-  // Data Shift Dummy
   final String shiftStart = '08:00';
-  final String shiftEnd = '14:00';
-  final int shiftTolerance = 15; // menit
+  final int shiftTolerance = 15;
 
   bool _isTimeValid(String timeStr, int toleranceMins) {
-    // Implementasi simpel cek shift untuk BR-12 & BR-14
     final now = DateTime.now();
     final parts = timeStr.split(':');
     final shiftTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]));
     final toleranceTime = shiftTime.add(Duration(minutes: toleranceMins));
-    final earlyBound = shiftTime.subtract(const Duration(minutes: 60)); // bisa absen 1 jam lebih awal
-
+    final earlyBound = shiftTime.subtract(const Duration(minutes: 60));
     return now.isAfter(earlyBound) && now.isBefore(toleranceTime);
   }
 
   Future<void> _prosesAbsen() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
-      // Validasi Shift (BR-12 & BR-14)
-      if (!_hasCheckedIn) {
-        if (!_isTimeValid(shiftStart, shiftTolerance)) {
-          _showErrorSnackBar('Di luar batas waktu absen (Shift: $shiftStart, Toleransi: $shiftTolerance mnt)');
-          return;
-        }
-      }
-
-      // Tahap 1: Validasi Device (Emulator / Binding)
-      _showLoadingDialog('Memverifikasi Perangkat...');
-      DeviceResult deviceResult = await DeviceService.checkDeviceIntegrity();
-      
-      if (!deviceResult.isValid) {
-        Navigator.pop(context); // Tutup dialog
-        _showErrorSnackBar(deviceResult.message);
+      // Validasi Shift
+      if (!_hasCheckedIn && !_isTimeValid(shiftStart, shiftTolerance)) {
+        _showError('Di luar batas waktu absen.\nShift: $shiftStart | Toleransi: $shiftTolerance mnt');
         return;
       }
-      
-      // Tahap 2: Validasi Lokasi (Mock GPS, Radius, Akurasi)
-      Navigator.pop(context); // Tutup dialog pertama
-      _showLoadingDialog('Memverifikasi Lokasi & GPS...');
-      LocationResult locationResult = await LocationService.getCurrentLocation();
-      
+
+      _showLoading('Memverifikasi Perangkat...');
+      final deviceResult = await DeviceService.checkDeviceIntegrity();
+      if (!deviceResult.isValid) { _pop(); _showError(deviceResult.message); return; }
+
+      _pop();
+      _showLoading('Memverifikasi Lokasi & GPS...');
+      final locationResult = await LocationService.getCurrentLocation();
       if (!locationResult.isValid) {
-        Navigator.pop(context);
-        _showErrorSnackBar(locationResult.message);
-        
-        // Simulasikan pembuatan Security Event ke Firebase jika Fake GPS
-        if (locationResult.message.contains('Fake GPS')) {
-           print("SECURITY EVENT RECORDED TO FIREBASE!");
-        }
+        _pop();
+        _showError(locationResult.message);
+        if (locationResult.message.contains('Fake GPS')) debugPrint('LOG: Security Event – Fake GPS');
         return;
       }
 
-      // Tahap 3: Validasi Geofence Radius
-      bool dalamRadius = LocationService.isWithinRadius(
-        userLat: locationResult.position!.latitude,
-        userLng: locationResult.position!.longitude,
-        branchLat: branchLat,
-        branchLng: branchLng,
-        radiusInMeters: branchRadius,
+      final inRange = LocationService.isWithinRadius(
+        userLat: locationResult.position!.latitude, userLng: locationResult.position!.longitude,
+        branchLat: branchLat, branchLng: branchLng, radiusInMeters: branchRadius,
       );
+      _pop();
 
-      Navigator.pop(context); // Tutup dialog
+      if (!inRange) { _showError('Anda berada di luar area klinik.\nPastikan Anda sudah di lokasi kerja.'); return; }
 
-      if (!dalamRadius) {
-        _showErrorSnackBar('Absensi ditolak: Anda berada di luar area klinik.');
-        return;
-      }
-
-      // Berhasil - Simulasikan Simpan ke Firebase dan Ganti State
       setState(() {
         if (!_hasCheckedIn) {
-          _statusAbsensi = 'Hadir (Masuk)';
-          _statusColor = Colors.green;
           _hasCheckedIn = true;
-          _attendanceId = 'simulated_id_123';
+          _attendanceId = 'att_${DateTime.now().millisecondsSinceEpoch}';
+          _statusAbsensi = 'Masuk pukul ${TimeOfDay.now().format(context)}';
+          _statusColor = Colors.green;
         } else {
-          _statusAbsensi = 'Hadir (Selesai)';
+          _statusAbsensi = 'Selesai kerja hari ini ✓';
           _statusColor = Colors.blue;
         }
       });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(!_hasCheckedIn ? 'Absensi Pulang Berhasil!' : 'Absensi Masuk Berhasil!'),
-          backgroundColor: !_hasCheckedIn ? Colors.blue : Colors.green,
-          duration: const Duration(seconds: 3),
-        )
-      );
 
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_hasCheckedIn ? '✓ Absensi Pulang Berhasil!' : '✓ Absensi Masuk Berhasil!'),
+        backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : Colors.green.shade700,
+      ));
     } catch (e) {
-      Navigator.pop(context);
-      _showErrorSnackBar('Terjadi kesalahan sistem: $e');
+      if (Navigator.canPop(context)) _pop();
+      _showError('Terjadi kesalahan: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
-  void _showLoadingDialog(String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(width: 20),
-                Expanded(child: Text(message)),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  void _showLoading(String msg) => showDialog(
+    context: context, barrierDismissible: false,
+    builder: (_) => Dialog(child: Padding(padding: const EdgeInsets.all(20),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        const CircularProgressIndicator(), const SizedBox(width: 16), Expanded(child: Text(msg)),
+      ]),
+    )),
+  );
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-      )
-    );
-  }
+  void _pop() { if (Navigator.canPop(context)) Navigator.pop(context); }
+
+  void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700, behavior: SnackBarBehavior.floating),
+  );
 
   @override
   Widget build(BuildContext context) {
+    final isDone = _statusAbsensi.startsWith('Selesai');
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: Colors.grey.shade50,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Row(
                 children: [
-                  const Text('Selamat datang,', style: TextStyle(color: Colors.grey)),
-                  const Text('Ahmad Fauzan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const Divider(height: 32),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Shift Hari Ini'),
-                      Text('08:00 - 14:00', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Status Absensi'),
-                      Text(_statusAbsensi, style: TextStyle(fontWeight: FontWeight.bold, color: _statusColor)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: (_isLoading || _statusAbsensi == 'Hadir (Selesai)') ? null : _prosesAbsen,
-                      icon: Icon(_hasCheckedIn ? Icons.directions_walk : Icons.fingerprint),
-                      label: Text(_hasCheckedIn ? 'ABSEN PULANG' : 'ABSEN MASUK'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : const Color(0xFF138D5B),
-                        disabledBackgroundColor: Colors.grey.shade300,
-                      ),
-                    ),
-                  )
+                  const CircleAvatar(radius: 22, backgroundColor: Color(0xFF138D5B),
+                    child: Icon(Icons.person, color: Colors.white, size: 24)),
+                  const SizedBox(width: 12),
+                  const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Selamat datang,', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    Text('Ahmad Fauzan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ]),
+                  const Spacer(),
+                  IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () {}),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text('Menu Utama', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            children: [
-              _buildMenuCard(context, Icons.history, 'Riwayat', 'Riwayat'),
-              _buildMenuCard(context, Icons.edit_document, 'Koreksi', 'Koreksi'),
-              _buildMenuCard(context, Icons.sick, 'Izin / Sakit', 'Sakit'),
-              _buildMenuCard(context, Icons.person, 'Profil', 'Profil'),
+              const SizedBox(height: 20),
+
+              // Status Card
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            const Text('Shift Hari Ini', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                            const Text('08:00 - 14:00', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                          ]),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _statusColor.withOpacity(0.3)),
+                            ),
+                            child: Text(_statusAbsensi, style: TextStyle(color: _statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: (isDone || _isLoading) ? null : _prosesAbsen,
+                          icon: Icon(_hasCheckedIn ? Icons.logout : Icons.fingerprint),
+                          label: Text(isDone ? 'Absensi Selesai' : _hasCheckedIn ? 'ABSEN PULANG' : 'ABSEN MASUK'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : const Color(0xFF138D5B),
+                            disabledBackgroundColor: Colors.grey.shade300,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Riwayat singkat
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Absensi Terakhir', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  TextButton(onPressed: () {}, child: const Text('Lihat Semua', style: TextStyle(color: Color(0xFF138D5B)))),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildRecentCard('05 Okt', '07:56', '14:03', 'Hadir', Colors.green),
+              const SizedBox(height: 8),
+              _buildRecentCard('04 Okt', '08:22', '14:00', 'Terlambat', Colors.orange),
+              const SizedBox(height: 8),
+              _buildRecentCard('03 Okt', '--', '--', 'Izin', Colors.blue),
             ],
-          )
-        ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, IconData icon, String title, String actionType) {
-    return Card(
-      elevation: 0,
-      color: Colors.green.shade50,
-      shape: RoundedRectangleBorder(
+  Widget _buildRecentCard(String date, String checkIn, String checkOut, String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.green.shade100)
+        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: InkWell(
-        onTap: () {
-          if (actionType == 'Koreksi' || actionType == 'Sakit') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RequestScreen(requestType: actionType),
-              ),
-            );
-          } else {
-             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Fitur sedang dalam pengembangan.'))
-            );
-          }
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40, color: const Color(0xFF138D5B)),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF138D5B))),
-          ],
-        ),
+      child: Row(
+        children: [
+          Container(width: 3, height: 40, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(width: 14),
+          Text(date, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 14),
+          Text('$checkIn → $checkOut', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            child: Text(status, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
