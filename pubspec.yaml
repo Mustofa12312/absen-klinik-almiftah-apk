@@ -41,6 +41,7 @@ dependencies:
   trust_location: ^2.0.13
   device_info_plus: ^13.3.0
   shared_preferences: ^2.5.5
+  firebase_app_check: ^0.4.8
 
 dev_dependencies:
   flutter_test:

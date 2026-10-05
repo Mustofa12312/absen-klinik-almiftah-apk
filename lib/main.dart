@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'services/device_service.dart';
 import 'services/location_service.dart';
 import 'screens/request_screen.dart';
-import 'services/location_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +12,12 @@ void main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    );
+    
+    // Inisialisasi Firebase App Check (BR-04)
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: AndroidProvider.debug, // Ganti PlayIntegrity untuk production
+      appleProvider: AppleProvider.debug,
     );
   } catch (e) {
     debugPrint('Firebase initialization failed (dummy keys used): $e');
@@ -157,11 +163,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = false;
   String _statusAbsensi = 'Belum Absen';
   Color _statusColor = Colors.orange;
+  
+  bool _hasCheckedIn = false;
+  String? _attendanceId;
 
   // Mock data untuk Cabang HQ-01 (Klinik Al-Miftah Pusat)
   final double branchLat = -6.2088;
   final double branchLng = 106.8456;
   final double branchRadius = 100.0;
+  
+  // Data Shift Dummy
+  final String shiftStart = '08:00';
+  final String shiftEnd = '14:00';
+  final int shiftTolerance = 15; // menit
+
+  bool _isTimeValid(String timeStr, int toleranceMins) {
+    // Implementasi simpel cek shift untuk BR-12 & BR-14
+    final now = DateTime.now();
+    final parts = timeStr.split(':');
+    final shiftTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]));
+    final toleranceTime = shiftTime.add(Duration(minutes: toleranceMins));
+    final earlyBound = shiftTime.subtract(const Duration(minutes: 60)); // bisa absen 1 jam lebih awal
+
+    return now.isAfter(earlyBound) && now.isBefore(toleranceTime);
+  }
 
   Future<void> _prosesAbsen() async {
     setState(() {
@@ -169,6 +194,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
 
     try {
+      // Validasi Shift (BR-12 & BR-14)
+      if (!_hasCheckedIn) {
+        if (!_isTimeValid(shiftStart, shiftTolerance)) {
+          _showErrorSnackBar('Di luar batas waktu absen (Shift: $shiftStart, Toleransi: $shiftTolerance mnt)');
+          return;
+        }
+      }
+
       // Tahap 1: Validasi Device (Emulator / Binding)
       _showLoadingDialog('Memverifikasi Perangkat...');
       DeviceResult deviceResult = await DeviceService.checkDeviceIntegrity();
@@ -211,17 +244,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
-      // Berhasil
+      // Berhasil - Simulasikan Simpan ke Firebase dan Ganti State
       setState(() {
-        _statusAbsensi = 'Hadir (Tepat Waktu)';
-        _statusColor = Colors.green;
+        if (!_hasCheckedIn) {
+          _statusAbsensi = 'Hadir (Masuk)';
+          _statusColor = Colors.green;
+          _hasCheckedIn = true;
+          _attendanceId = 'simulated_id_123';
+        } else {
+          _statusAbsensi = 'Hadir (Selesai)';
+          _statusColor = Colors.blue;
+        }
       });
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Absensi Masuk Berhasil!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(!_hasCheckedIn ? 'Absensi Pulang Berhasil!' : 'Absensi Masuk Berhasil!'),
+          backgroundColor: !_hasCheckedIn ? Colors.blue : Colors.green,
+          duration: const Duration(seconds: 3),
         )
       );
 
@@ -317,12 +357,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _isLoading ? null : _prosesAbsen,
-                      icon: const Icon(Icons.fingerprint),
-                      label: const Text('ABSEN MASUK'),
+                      onPressed: (_isLoading || _statusAbsensi == 'Hadir (Selesai)') ? null : _prosesAbsen,
+                      icon: Icon(_hasCheckedIn ? Icons.directions_walk : Icons.fingerprint),
+                      label: Text(_hasCheckedIn ? 'ABSEN PULANG' : 'ABSEN MASUK'),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: const Color(0xFF138D5B),
+                        backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : const Color(0xFF138D5B),
                         disabledBackgroundColor: Colors.grey.shade300,
                       ),
                     ),

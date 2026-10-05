@@ -35,6 +35,28 @@ class FirestoreService {
     });
   }
 
+  /// Mencatat absensi pulang ke Firestore (BR-11)
+  static Future<void> checkOut({
+    required LocationResult location,
+    required DeviceResult device,
+    required String attendanceId,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Pegawai belum login');
+
+    final attendanceRef = _db.collection('attendances').doc(attendanceId);
+
+    await attendanceRef.update({
+      'type': 'CHECK_OUT',
+      'checkoutTime': FieldValue.serverTimestamp(),
+      'checkoutLocation': {
+        'latitude': location.position?.latitude,
+        'longitude': location.position?.longitude,
+        'accuracy': location.position?.accuracy,
+      },
+    });
+  }
+
   /// Mencatat keamanan / pelanggaran (BR-06 & BR-07)
   static Future<void> logSecurityEvent(String eventType, String details) async {
     final user = _auth.currentUser;
