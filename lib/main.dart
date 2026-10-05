@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'services/device_service.dart';
+import 'services/location_service.dart';
+import 'screens/request_screen.dart';
+import 'services/location_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization failed (dummy keys used): $e');
+  }
+
   runApp(const KlinikAlmiftahApp());
 }
 
@@ -13,7 +28,7 @@ class KlinikAlmiftahApp extends StatelessWidget {
     return MaterialApp(
       title: 'Klinik Al-Miftah',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF138D5B)), // Greenish theme
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF138D5B)),
         useMaterial3: true,
       ),
       home: const SplashScreen(),
@@ -131,8 +146,127 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool _isLoading = false;
+  String _statusAbsensi = 'Belum Absen';
+  Color _statusColor = Colors.orange;
+
+  // Mock data untuk Cabang HQ-01 (Klinik Al-Miftah Pusat)
+  final double branchLat = -6.2088;
+  final double branchLng = 106.8456;
+  final double branchRadius = 100.0;
+
+  Future<void> _prosesAbsen() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Tahap 1: Validasi Device (Emulator / Binding)
+      _showLoadingDialog('Memverifikasi Perangkat...');
+      DeviceResult deviceResult = await DeviceService.checkDeviceIntegrity();
+      
+      if (!deviceResult.isValid) {
+        Navigator.pop(context); // Tutup dialog
+        _showErrorSnackBar(deviceResult.message);
+        return;
+      }
+      
+      // Tahap 2: Validasi Lokasi (Mock GPS, Radius, Akurasi)
+      Navigator.pop(context); // Tutup dialog pertama
+      _showLoadingDialog('Memverifikasi Lokasi & GPS...');
+      LocationResult locationResult = await LocationService.getCurrentLocation();
+      
+      if (!locationResult.isValid) {
+        Navigator.pop(context);
+        _showErrorSnackBar(locationResult.message);
+        
+        // Simulasikan pembuatan Security Event ke Firebase jika Fake GPS
+        if (locationResult.message.contains('Fake GPS')) {
+           print("SECURITY EVENT RECORDED TO FIREBASE!");
+        }
+        return;
+      }
+
+      // Tahap 3: Validasi Geofence Radius
+      bool dalamRadius = LocationService.isWithinRadius(
+        userLat: locationResult.position!.latitude,
+        userLng: locationResult.position!.longitude,
+        branchLat: branchLat,
+        branchLng: branchLng,
+        radiusInMeters: branchRadius,
+      );
+
+      Navigator.pop(context); // Tutup dialog
+
+      if (!dalamRadius) {
+        _showErrorSnackBar('Absensi ditolak: Anda berada di luar area klinik.');
+        return;
+      }
+
+      // Berhasil
+      setState(() {
+        _statusAbsensi = 'Hadir (Tepat Waktu)';
+        _statusColor = Colors.green;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Absensi Masuk Berhasil!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        )
+      );
+
+    } catch (e) {
+      Navigator.pop(context);
+      _showErrorSnackBar('Terjadi kesalahan sistem: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showLoadingDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 20),
+                Expanded(child: Text(message)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+      )
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +289,7 @@ class DashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Card(
+            elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -171,23 +306,24 @@ class DashboardScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Status Absensi'),
-                      Text('Belum Absen', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                      const Text('Status Absensi'),
+                      Text(_statusAbsensi, style: TextStyle(fontWeight: FontWeight.bold, color: _statusColor)),
                     ],
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () {},
+                      onPressed: _isLoading ? null : _prosesAbsen,
                       icon: const Icon(Icons.fingerprint),
                       label: const Text('ABSEN MASUK'),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: const Color(0xFF138D5B),
+                        disabledBackgroundColor: Colors.grey.shade300,
                       ),
                     ),
                   )
@@ -195,7 +331,7 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           const Text('Menu Utama', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           GridView.count(
@@ -205,10 +341,10 @@ class DashboardScreen extends StatelessWidget {
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             children: [
-              _buildMenuCard(Icons.history, 'Riwayat'),
-              _buildMenuCard(Icons.edit_document, 'Koreksi'),
-              _buildMenuCard(Icons.sick, 'Izin / Sakit'),
-              _buildMenuCard(Icons.person, 'Profil'),
+              _buildMenuCard(context, Icons.history, 'Riwayat', 'Riwayat'),
+              _buildMenuCard(context, Icons.edit_document, 'Koreksi', 'Koreksi'),
+              _buildMenuCard(context, Icons.sick, 'Izin / Sakit', 'Sakit'),
+              _buildMenuCard(context, Icons.person, 'Profil', 'Profil'),
             ],
           )
         ],
@@ -216,19 +352,36 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuCard(IconData icon, String title) {
+  Widget _buildMenuCard(BuildContext context, IconData icon, String title, String actionType) {
     return Card(
       elevation: 0,
       color: Colors.green.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.green.shade100)
+      ),
       child: InkWell(
-        onTap: () {},
+        onTap: () {
+          if (actionType == 'Koreksi' || actionType == 'Sakit') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RequestScreen(requestType: actionType),
+              ),
+            );
+          } else {
+             ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Fitur sedang dalam pengembangan.'))
+            );
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 40, color: const Color(0xFF138D5B)),
             const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF138D5B))),
           ],
         ),
       ),
