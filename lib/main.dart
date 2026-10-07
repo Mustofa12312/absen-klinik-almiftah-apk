@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'services/device_service.dart';
 import 'services/location_service.dart';
+import 'services/firestore_service.dart';
 import 'screens/history_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/request_screen.dart';
@@ -121,14 +123,27 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text.trim(),
+      );
       if (mounted) {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainShell()));
       }
-    });
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.message ?? 'Login gagal. Periksa email dan password Anda.'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -357,7 +372,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!locationResult.isValid) {
         _pop();
         _showError(locationResult.message);
-        if (locationResult.message.contains('Fake GPS')) debugPrint('LOG: Security Event – Fake GPS');
+        if (locationResult.message.contains('Fake GPS')) {
+           FirestoreService.logSecurityEvent(
+             type: 'mock_location', branchId: 'HQ-01', deviceId: deviceResult.deviceId ?? 'unknown'
+           );
+        }
         return;
       }
 
@@ -367,19 +386,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
       _pop();
 
-      if (!inRange) { _showError('Anda berada di luar area klinik.\nPastikan Anda sudah di lokasi kerja.'); return; }
+      if (!inRange) { 
+        _showError('Anda berada di luar area klinik.\nPastikan Anda sudah di lokasi kerja.'); 
+        FirestoreService.logSecurityEvent(
+          type: 'outside_geofence', branchId: 'HQ-01', deviceId: deviceResult.deviceId ?? 'unknown'
+        );
+        return; 
+      }
 
-      setState(() {
-        if (!_hasCheckedIn) {
+      if (!_hasCheckedIn) {
+        // Simulasi kalkulasi lateMinutes
+        final now = DateTime.now();
+        final parts = shiftStart.split(':');
+        final shiftTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]));
+        final lateMinutes = now.difference(shiftTime).inMinutes > 0 ? now.difference(shiftTime).inMinutes : 0;
+
+        _attendanceId = await FirestoreService.checkIn(
+          location: locationResult,
+          device: deviceResult,
+          branchId: 'HQ-01', // Harusnya query dari tabel employee
+          shiftId: 'shift_1',
+          distanceMeters: 50.0, // Simulasi jarak
+          lateMinutes: lateMinutes,
+        );
+        setState(() {
           _hasCheckedIn = true;
-          _attendanceId = 'att_${DateTime.now().millisecondsSinceEpoch}';
           _statusAbsensi = 'Masuk pukul ${TimeOfDay.now().format(context)}';
           _statusColor = Colors.green;
-        } else {
+        });
+      } else {
+        await FirestoreService.checkOut(
+          location: locationResult,
+          device: deviceResult,
+          attendanceId: _attendanceId!,
+          distanceMeters: 50.0,
+          earlyCheckoutMinutes: 0,
+        );
+        setState(() {
           _statusAbsensi = 'Selesai kerja hari ini ✓';
           _statusColor = Colors.blue;
-        }
-      });
+        });
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(_hasCheckedIn ? '✓ Absensi Pulang Berhasil!' : '✓ Absensi Masuk Berhasil!'),

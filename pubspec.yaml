@@ -42,6 +42,7 @@ dependencies:
   device_info_plus: ^13.3.0
   shared_preferences: ^2.5.5
   firebase_app_check: ^0.4.8
+  intl: ^0.20.3
 
 dev_dependencies:
   flutter_test:

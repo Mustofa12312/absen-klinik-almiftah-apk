@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -11,21 +14,50 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String _selectedFilter = 'Semua';
   final List<String> _filters = ['Semua', 'Hadir', 'Terlambat', 'Tidak Hadir', 'Izin', 'Sakit', 'Cuti'];
 
-  final List<Map<String, dynamic>> _dummyHistory = [
-    {'date': '05 Okt 2026', 'checkIn': '07:56', 'checkOut': '14:03', 'status': 'Hadir', 'color': Colors.green, 'lateMin': 0},
-    {'date': '04 Okt 2026', 'checkIn': '08:22', 'checkOut': '14:00', 'status': 'Terlambat', 'color': Colors.orange, 'lateMin': 22},
-    {'date': '03 Okt 2026', 'checkIn': '--',    'checkOut': '--',    'status': 'Izin',     'color': Colors.blue, 'lateMin': 0},
-    {'date': '02 Okt 2026', 'checkIn': '08:05', 'checkOut': '13:30', 'status': 'Pulang Cepat', 'color': Colors.amber.shade700, 'lateMin': 0},
-    {'date': '01 Okt 2026', 'checkIn': '07:58', 'checkOut': '14:02', 'status': 'Hadir', 'color': Colors.green, 'lateMin': 0},
-    {'date': '30 Sep 2026', 'checkIn': '--',    'checkOut': '--',    'status': 'Sakit',    'color': Colors.purple, 'lateMin': 0},
-  ];
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'present': return Colors.green;
+      case 'late': return Colors.orange;
+      case 'absent': return Colors.red;
+      case 'permission': return Colors.blue;
+      case 'sick': return Colors.purple;
+      case 'leave': return Colors.teal;
+      case 'business_trip': return Colors.indigo;
+      case 'early_checkout': return Colors.amber.shade700;
+      default: return Colors.grey;
+    }
+  }
+
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'present': return 'Hadir';
+      case 'late': return 'Terlambat';
+      case 'absent': return 'Tidak Hadir';
+      case 'permission': return 'Izin';
+      case 'sick': return 'Sakit';
+      case 'leave': return 'Cuti';
+      case 'business_trip': return 'Dinas';
+      case 'early_checkout': return 'Pulang Cepat';
+      default: return status;
+    }
+  }
+
+  String _getStatusFilterValue(String filter) {
+    switch (filter) {
+      case 'Hadir': return 'present';
+      case 'Terlambat': return 'late';
+      case 'Tidak Hadir': return 'absent';
+      case 'Izin': return 'permission';
+      case 'Sakit': return 'sick';
+      case 'Cuti': return 'leave';
+      case 'Dinas': return 'business_trip';
+      case 'Pulang Cepat': return 'early_checkout';
+      default: return 'all';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _selectedFilter == 'Semua'
-        ? _dummyHistory
-        : _dummyHistory.where((r) => r['status'] == _selectedFilter).toList();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Riwayat Absensi'),
@@ -63,75 +95,114 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: filtered.isEmpty
-                ? const Center(child: Text('Tidak ada data untuk filter ini.', style: TextStyle(color: Colors.grey)))
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final record = filtered[index];
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  color: record['color'] as Color,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(record['date'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.login, size: 14, color: Colors.grey),
-                                        const SizedBox(width: 4),
-                                        Text('Masuk: ${record['checkIn']}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                                        const SizedBox(width: 16),
-                                        const Icon(Icons.logout, size: 14, color: Colors.grey),
-                                        const SizedBox(width: 4),
-                                        Text('Pulang: ${record['checkOut']}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                                      ],
-                                    ),
-                                    if ((record['lateMin'] as int) > 0) ...[
-                                      const SizedBox(height: 4),
-                                      Text('Terlambat ${record['lateMin']} menit', style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('attendance')
+                  .where('employeeId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                  .orderBy('date', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Terjadi kesalahan: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+                
+                final filterValue = _getStatusFilterValue(_selectedFilter);
+                final filteredDocs = filterValue == 'all'
+                    ? docs
+                    : docs.where((d) => (d.data() as Map<String, dynamic>)['status'] == filterValue).toList();
+
+                if (filteredDocs.isEmpty) {
+                  return const Center(child: Text('Tidak ada data untuk filter ini.', style: TextStyle(color: Colors.grey)));
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredDocs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final data = filteredDocs[index].data() as Map<String, dynamic>;
+                    
+                    final String status = data['status'] ?? 'unknown';
+                    final Color color = _getStatusColor(status);
+                    final String statusLabel = _getStatusLabel(status);
+                    
+                    String checkInTime = '--';
+                    String checkOutTime = '--';
+                    int lateMin = 0;
+                    
+                    if (data['checkIn'] != null) {
+                      final Timestamp? ts = data['checkIn']['timestamp'];
+                      if (ts != null) {
+                         checkInTime = DateFormat('HH:mm').format(ts.toDate());
+                      }
+                      lateMin = data['checkIn']['lateMinutes'] ?? 0;
+                    }
+                    if (data['checkOut'] != null) {
+                      final Timestamp? ts = data['checkOut']['timestamp'];
+                      if (ts != null) {
+                         checkOutTime = DateFormat('HH:mm').format(ts.toDate());
+                      }
+                    }
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 4,
+                              height: 60,
+                              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(data['date'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.login, size: 14, color: Colors.grey),
+                                      const SizedBox(width: 4),
+                                      Text('Masuk: $checkInTime', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                                      const SizedBox(width: 16),
+                                      const Icon(Icons.logout, size: 14, color: Colors.grey),
+                                      const SizedBox(width: 4),
+                                      Text('Pulang: $checkOutTime', style: const TextStyle(fontSize: 13, color: Colors.grey)),
                                     ],
+                                  ),
+                                  if (lateMin > 0) ...[
+                                    const SizedBox(height: 4),
+                                    Text('Terlambat $lateMin menit', style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
                                   ],
-                                ),
+                                ],
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: (record['color'] as Color).withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  record['status'] as String,
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: record['color'] as Color),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+                              child: Text(statusLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),

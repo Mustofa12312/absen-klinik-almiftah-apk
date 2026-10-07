@@ -1,90 +1,107 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../main.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profil Saya'),
         backgroundColor: const Color(0xFF138D5B),
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              width: double.infinity,
-              color: const Color(0xFF138D5B),
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-              child: Column(
-                children: [
-                  const CircleAvatar(
-                    radius: 44,
-                    backgroundColor: Colors.white24,
-                    child: Icon(Icons.person, size: 56, color: Colors.white),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Ahmad Fauzan', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)),
-                    child: const Text('Dokter Umum', style: TextStyle(color: Colors.white, fontSize: 13)),
-                  ),
-                ],
-              ),
-            ),
+      body: FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance.collection('employees').doc(user?.uid).get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+          final name = data['name'] ?? 'Pegawai';
+          final role = data['role'] ?? 'Staff';
+          final employeeId = data['employeeId'] ?? 'EMP-XXX';
+          final branchId = data['branchId'] ?? 'HQ-01';
 
-            const SizedBox(height: 16),
-
-            // Info Cards
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  _buildInfoCard('Informasi Pegawai', [
-                    _buildInfoRow(Icons.badge_outlined, 'ID Pegawai', 'EMP001'),
-                    _buildInfoRow(Icons.email_outlined, 'Email', 'ahmad.fauzan@almiftah.com'),
-                    _buildInfoRow(Icons.phone_outlined, 'Nomor HP', '0812-3456-7890'),
-                    _buildInfoRow(Icons.calendar_today_outlined, 'Tanggal Bergabung', '01 Januari 2026'),
-                  ]),
-                  const SizedBox(height: 12),
-                  _buildInfoCard('Informasi Kerja', [
-                    _buildInfoRow(Icons.business_outlined, 'Cabang', 'Klinik Al-Miftah Pusat'),
-                    _buildInfoRow(Icons.schedule_outlined, 'Shift Aktif', 'Shift Pagi (08:00 - 14:00)'),
-                    _buildInfoRow(Icons.check_circle_outline, 'Status', 'Aktif'),
-                  ]),
-                  const SizedBox(height: 12),
-                  _buildInfoCard('Perangkat Terdaftar', [
-                    _buildInfoRow(Icons.smartphone_outlined, 'Model', 'Samsung Galaxy A15'),
-                    _buildInfoRow(Icons.android_outlined, 'Android', '14'),
-                    _buildInfoRow(Icons.verified_outlined, 'Status Binding', 'Terikat (Device Binding aktif)'),
-                  ]),
-                  const SizedBox(height: 24),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(context,
-                        MaterialPageRoute(builder: (_) => const _LoginPlaceholder()),
-                        (route) => false,
-                      );
-                    },
-                    icon: const Icon(Icons.logout, color: Colors.red),
-                    label: const Text('Keluar', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  width: double.infinity,
+                  color: const Color(0xFF138D5B),
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                  child: Column(
+                    children: [
+                      const CircleAvatar(
+                        radius: 44,
+                        backgroundColor: Colors.white24,
+                        child: Icon(Icons.person, size: 56, color: Colors.white),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)),
+                        child: Text(role, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 32),
-                ],
-              ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Info Cards
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _buildInfoCard('Informasi Pegawai', [
+                        _buildInfoRow(Icons.badge_outlined, 'ID Pegawai', employeeId),
+                        _buildInfoRow(Icons.email_outlined, 'Email', user?.email ?? '-'),
+                      ]),
+                      const SizedBox(height: 12),
+                      _buildInfoCard('Informasi Kerja', [
+                        _buildInfoRow(Icons.business_outlined, 'Cabang', branchId),
+                        _buildInfoRow(Icons.schedule_outlined, 'Shift Aktif', 'Tergantung Jadwal'),
+                        _buildInfoRow(Icons.check_circle_outline, 'Status', 'Aktif'),
+                      ]),
+                      const SizedBox(height: 12),
+                      _buildInfoCard('Perangkat Terdaftar', [
+                        _buildInfoRow(Icons.smartphone_outlined, 'Status Binding', 'Terikat (Device Binding aktif)'),
+                      ]),
+                      const SizedBox(height: 24),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await FirebaseAuth.instance.signOut();
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(context,
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.logout, color: Colors.red),
+                        label: const Text('Keluar', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        }
       ),
     );
   }
@@ -135,11 +152,4 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// Placeholder untuk routing — akan diganti dengan LoginScreen ketika dipasang di main.dart
-class _LoginPlaceholder extends StatelessWidget {
-  const _LoginPlaceholder();
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Kembali ke Login...')));
-  }
-}
+// Removed Placeholder

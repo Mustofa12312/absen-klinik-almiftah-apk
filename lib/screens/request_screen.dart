@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/firestore_service.dart';
+import 'package:intl/intl.dart';
 
 class RequestScreen extends StatefulWidget {
   final String requestType;
@@ -20,15 +22,56 @@ class _RequestScreenState extends State<RequestScreen> {
     super.dispose();
   }
 
-  void _submitRequest() {
+  bool _isLoading = false;
+
+  Future<void> _submitRequest() async {
     if (_formKey.currentState!.validate() && _selectedDate != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pengajuan berhasil dikirim! Menunggu persetujuan admin.'),
-          backgroundColor: Colors.green,
-        )
-      );
-      Navigator.pop(context);
+      setState(() => _isLoading = true);
+      try {
+        final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+        if (widget.requestType == 'Koreksi') {
+          // Asumsikan perbaikan jam masuk/keluar tidak tersedia di UI saat ini, hanya alasan
+          await FirestoreService.submitCorrection(
+            attendanceId: 'att_unknown', // Harus diambil dari histori, untuk MVP kita lewatkan atau butuh update UI
+            branchId: 'HQ-01',
+            type: 'wrong_data',
+            requestedCheckIn: '08:00',
+            requestedCheckOut: '17:00',
+            reason: _reasonController.text,
+          );
+        } else {
+          String type = 'permission';
+          if (widget.requestType == 'Sakit') type = 'sick';
+          if (widget.requestType == 'Cuti') type = 'leave';
+          if (widget.requestType == 'Dinas') type = 'business_trip';
+
+          await FirestoreService.submitLeaveRequest(
+            branchId: 'HQ-01',
+            startDate: dateStr,
+            endDate: dateStr,
+            type: type,
+            reason: _reasonController.text,
+          );
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Pengajuan ${widget.requestType} berhasil dikirim! Menunggu persetujuan admin.'),
+              backgroundColor: Colors.green,
+            )
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     } else if (_selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -156,13 +199,15 @@ class _RequestScreenState extends State<RequestScreen> {
 
               const SizedBox(height: 32),
               FilledButton(
-                onPressed: _submitRequest,
+                onPressed: _isLoading ? null : _submitRequest,
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF138D5B),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: const Text('KIRIM PENGAJUAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: _isLoading 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('KIRIM PENGAJUAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
