@@ -88,8 +88,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.local_hospital, size: 80, color: Colors.white),
-              SizedBox(height: 16),
+              Image.asset('assets/logo.png', width: 120, height: 120),
+              const SizedBox(height: 16),
               Text('Klinik Al-Miftah', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
               SizedBox(height: 8),
               Text('Sistem Absensi Pegawai', style: TextStyle(fontSize: 14, color: Colors.white70)),
@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 48),
-                const Icon(Icons.local_hospital, size: 64, color: Color(0xFF138D5B)),
+                Image.asset('assets/logo.png', height: 80),
                 const SizedBox(height: 24),
                 const Text('Selamat Datang', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                 const SizedBox(height: 8),
