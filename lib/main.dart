@@ -84,17 +84,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       backgroundColor: const Color(0xFF138D5B),
       body: FadeTransition(
         opacity: _fadeIn,
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset('assets/logo.png', width: 120, height: 120),
               const SizedBox(height: 16),
-              Text('Klinik Al-Miftah', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
-              SizedBox(height: 8),
-              Text('Sistem Absensi Pegawai', style: TextStyle(fontSize: 14, color: Colors.white70)),
-              SizedBox(height: 48),
-              CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              const Text('Klinik Al-Miftah', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+              const SizedBox(height: 8),
+              const Text('Sistem Absensi Pegawai', style: TextStyle(fontSize: 14, color: Colors.white70)),
+              const SizedBox(height: 48),
+              const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
             ],
           ),
         ),
