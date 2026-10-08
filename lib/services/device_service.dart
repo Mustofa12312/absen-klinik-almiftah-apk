@@ -52,7 +52,7 @@ class DeviceService {
         final deviceDoc = await FirebaseFirestore.instance.collection('devices').doc(deviceId).get();
         if (deviceDoc.exists) {
           final data = deviceDoc.data()!;
-          if (data['uid'] != user.uid) {
+          if (data['employeeId'] != user.uid) {
             return DeviceResult(isValid: false, message: 'Perangkat ini terdaftar untuk akun lain.');
           }
           if (data['isActive'] == false) {
