@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DeviceResult {
   final bool isValid;
@@ -16,6 +18,9 @@ class DeviceService {
   /// Mendapatkan Device ID yang unik (BR-08 Device Binding) dan mendeteksi Emulator (BR-07)
   static Future<DeviceResult> checkDeviceIntegrity() async {
     try {
+      String deviceId = '';
+      String deviceName = '';
+
       if (Platform.isAndroid) {
         AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
         
@@ -25,15 +30,9 @@ class DeviceService {
         }
 
         // Generate unique device identifier (Kombinasi model dan ID)
-        String deviceId = androidInfo.id;
-        String deviceName = '${androidInfo.manufacturer} ${androidInfo.model}';
+        deviceId = androidInfo.id;
+        deviceName = '${androidInfo.manufacturer} ${androidInfo.model}';
         
-        return DeviceResult(
-          isValid: true, 
-          message: 'Device aman', 
-          deviceId: deviceId, 
-          deviceName: deviceName
-        );
       } else if (Platform.isIOS) {
         IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
         
@@ -41,18 +40,35 @@ class DeviceService {
           return DeviceResult(isValid: false, message: 'Aplikasi tidak dapat berjalan di Simulator.');
         }
 
-        String deviceId = iosInfo.identifierForVendor ?? 'unknown_ios_id';
-        String deviceName = iosInfo.name;
+        deviceId = iosInfo.identifierForVendor ?? 'unknown_ios_id';
+        deviceName = iosInfo.name;
 
-        return DeviceResult(
-          isValid: true, 
-          message: 'Device aman', 
-          deviceId: deviceId, 
-          deviceName: deviceName
-        );
+      } else {
+        return DeviceResult(isValid: false, message: 'Platform tidak didukung.');
       }
-      
-      return DeviceResult(isValid: false, message: 'Platform tidak didukung.');
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final deviceDoc = await FirebaseFirestore.instance.collection('devices').doc(deviceId).get();
+        if (deviceDoc.exists) {
+          final data = deviceDoc.data()!;
+          if (data['uid'] != user.uid) {
+            return DeviceResult(isValid: false, message: 'Perangkat ini terdaftar untuk akun lain.');
+          }
+          if (data['isActive'] == false) {
+            return DeviceResult(isValid: false, message: 'Perangkat ini telah dinonaktifkan oleh Admin.');
+          }
+        } else {
+          return DeviceResult(isValid: false, message: 'Perangkat belum terdaftar. Hubungi Admin.');
+        }
+      }
+
+      return DeviceResult(
+        isValid: true, 
+        message: 'Device aman', 
+        deviceId: deviceId, 
+        deviceName: deviceName
+      );
     } catch (e) {
       return DeviceResult(isValid: false, message: 'Gagal membaca identitas perangkat.');
     }

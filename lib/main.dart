@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'services/device_service.dart';
 import 'services/location_service.dart';
@@ -18,8 +19,8 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.debug,
-      appleProvider: AppleProvider.debug,
+      androidProvider: AndroidProvider.playIntegrity,
+      appleProvider: AppleProvider.deviceCheck,
     );
   } catch (e) {
     debugPrint('Firebase init failed (dummy keys): $e');
@@ -333,16 +334,108 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = false;
-  String _statusAbsensi = 'Belum Absen';
-  Color _statusColor = Colors.orange;
+  String _statusAbsensi = 'Memuat...';
+  Color _statusColor = Colors.grey;
   bool _hasCheckedIn = false;
   String? _attendanceId;
 
-  final double branchLat = -6.2088;
-  final double branchLng = 106.8456;
-  final double branchRadius = 100.0;
-  final String shiftStart = '08:00';
-  final int shiftTolerance = 15;
+  double? branchLat;
+  double? branchLng;
+  double? branchRadius;
+  String shiftStart = '08:00';
+  int shiftTolerance = 15;
+  String? branchId;
+  String? shiftId;
+  String employeeName = 'Pegawai';
+  String shiftDisplay = '--:--';
+  List<Map<String, dynamic>> recentHistory = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final empDoc = await FirebaseFirestore.instance.collection('employees').doc(user.uid).get();
+      if (!empDoc.exists) {
+        if (mounted) _showError('Data pegawai tidak ditemukan.');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final empData = empDoc.data()!;
+      employeeName = empData['name'] ?? 'Pegawai';
+      branchId = empData['branchId'];
+      shiftId = empData['currentShiftId'] ?? 'shift_1';
+
+      if (branchId != null) {
+        final branchDoc = await FirebaseFirestore.instance.collection('branches').doc(branchId).get();
+        if (branchDoc.exists) {
+          final bData = branchDoc.data()!;
+          branchLat = bData['latitude']?.toDouble();
+          branchLng = bData['longitude']?.toDouble();
+          branchRadius = bData['radius']?.toDouble();
+        }
+      }
+
+      if (shiftId != null) {
+        final shiftDoc = await FirebaseFirestore.instance.collection('shifts').doc(shiftId).get();
+        if (shiftDoc.exists) {
+          final sData = shiftDoc.data()!;
+          shiftStart = sData['startTime'] ?? '08:00';
+          shiftTolerance = sData['toleranceMinutes'] ?? 15;
+          shiftDisplay = '${shiftStart} - ${sData['endTime'] ?? '--:--'}';
+        }
+      }
+
+      final now = DateTime.now();
+      final workDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      
+      final attendanceQuery = await FirebaseFirestore.instance
+          .collection('attendance')
+          .where('employeeId', isEqualTo: user.uid)
+          .where('workDate', isEqualTo: workDate)
+          .limit(1)
+          .get();
+
+      if (attendanceQuery.docs.isNotEmpty) {
+        final doc = attendanceQuery.docs.first;
+        _attendanceId = doc.id;
+        final data = doc.data();
+        if (data['checkOut'] != null) {
+          _statusAbsensi = 'Selesai kerja hari ini ✓';
+          _statusColor = Colors.blue;
+          _hasCheckedIn = true;
+        } else {
+          _hasCheckedIn = true;
+          _statusAbsensi = 'Masuk pukul ${data['checkIn']?['timestamp'] != null ? TimeOfDay.fromDateTime((data['checkIn']['timestamp'] as Timestamp).toDate()).format(context) : '...'}';
+          _statusColor = Colors.green;
+        }
+      } else {
+         _statusAbsensi = 'Belum Absen';
+         _statusColor = Colors.orange;
+      }
+
+      final historyQuery = await FirebaseFirestore.instance
+          .collection('attendance')
+          .where('employeeId', isEqualTo: user.uid)
+          .orderBy('workDate', descending: true)
+          .limit(3)
+          .get();
+      
+      recentHistory = historyQuery.docs.map((d) => d.data()).toList();
+
+    } catch (e) {
+      if (mounted) _showError('Gagal memuat data.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   bool _isTimeValid(String timeStr, int toleranceMins) {
     final now = DateTime.now();
@@ -356,6 +449,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _prosesAbsen() async {
     setState(() => _isLoading = true);
     try {
+      if (branchLat == null || branchLng == null || branchRadius == null) {
+        _showError('Konfigurasi cabang tidak valid.');
+        return;
+      }
+
       // Validasi Shift
       if (!_hasCheckedIn && !_isTimeValid(shiftStart, shiftTolerance)) {
         _showError('Di luar batas waktu absen.\nShift: $shiftStart | Toleransi: $shiftTolerance mnt');
@@ -374,7 +472,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _showError(locationResult.message);
         if (locationResult.message.contains('Fake GPS')) {
            FirestoreService.logSecurityEvent(
-             type: 'mock_location', branchId: 'HQ-01', deviceId: deviceResult.deviceId ?? 'unknown'
+             type: 'mock_location', branchId: branchId ?? 'unknown', deviceId: deviceResult.deviceId ?? 'unknown'
            );
         }
         return;
@@ -382,31 +480,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final inRange = LocationService.isWithinRadius(
         userLat: locationResult.position!.latitude, userLng: locationResult.position!.longitude,
-        branchLat: branchLat, branchLng: branchLng, radiusInMeters: branchRadius,
+        branchLat: branchLat!, branchLng: branchLng!, radiusInMeters: branchRadius!,
       );
       _pop();
 
       if (!inRange) { 
         _showError('Anda berada di luar area klinik.\nPastikan Anda sudah di lokasi kerja.'); 
         FirestoreService.logSecurityEvent(
-          type: 'outside_geofence', branchId: 'HQ-01', deviceId: deviceResult.deviceId ?? 'unknown'
+          type: 'outside_geofence', branchId: branchId ?? 'unknown', deviceId: deviceResult.deviceId ?? 'unknown'
         );
         return; 
       }
 
       if (!_hasCheckedIn) {
-        // Simulasi kalkulasi lateMinutes
         final now = DateTime.now();
         final parts = shiftStart.split(':');
         final shiftTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]));
         final lateMinutes = now.difference(shiftTime).inMinutes > 0 ? now.difference(shiftTime).inMinutes : 0;
+        
+        // Cek double sebelum simpan
+        final workDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+        final check = await FirebaseFirestore.instance.collection('attendance')
+          .where('employeeId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+          .where('workDate', isEqualTo: workDate).limit(1).get();
+          
+        if (check.docs.isNotEmpty) {
+           _showError('Anda sudah absen masuk hari ini.');
+           return;
+        }
 
         _attendanceId = await FirestoreService.checkIn(
           location: locationResult,
           device: deviceResult,
-          branchId: 'HQ-01', // Harusnya query dari tabel employee
-          shiftId: 'shift_1',
-          distanceMeters: 50.0, // Simulasi jarak
+          branchId: branchId ?? 'unknown', 
+          shiftId: shiftId ?? 'unknown',
+          distanceMeters: 0.0,
           lateMinutes: lateMinutes,
         );
         setState(() {
@@ -419,7 +527,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           location: locationResult,
           device: deviceResult,
           attendanceId: _attendanceId!,
-          distanceMeters: 50.0,
+          distanceMeters: 0.0,
           earlyCheckoutMinutes: 0,
         );
         setState(() {
@@ -434,9 +542,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ));
     } catch (e) {
       if (Navigator.canPop(context)) _pop();
-      _showError('Terjadi kesalahan: $e');
+      _showError('Terjadi kesalahan pada sistem.');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -472,9 +580,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const CircleAvatar(radius: 22, backgroundColor: Color(0xFF138D5B),
                     child: Icon(Icons.person, color: Colors.white, size: 24)),
                   const SizedBox(width: 12),
-                  const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Selamat datang,', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    Text('Ahmad Fauzan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('Selamat datang,', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    Text(employeeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ]),
                   const Spacer(),
                   IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () {}),
@@ -496,7 +604,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             const Text('Shift Hari Ini', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                            const Text('08:00 - 14:00', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                            Text(shiftDisplay, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                           ]),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -540,11 +648,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              _buildRecentCard('05 Okt', '07:56', '14:03', 'Hadir', Colors.green),
-              const SizedBox(height: 8),
-              _buildRecentCard('04 Okt', '08:22', '14:00', 'Terlambat', Colors.orange),
-              const SizedBox(height: 8),
-              _buildRecentCard('03 Okt', '--', '--', 'Izin', Colors.blue),
+              if (recentHistory.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Center(child: Text('Belum ada riwayat absensi', style: TextStyle(color: Colors.grey))),
+                )
+              else
+                ...recentHistory.map((hist) {
+                  final status = hist['status'] ?? 'unknown';
+                  String checkIn = '--';
+                  String checkOut = '--';
+                  if (hist['checkIn']?['timestamp'] != null) {
+                    checkIn = TimeOfDay.fromDateTime((hist['checkIn']['timestamp'] as Timestamp).toDate()).format(context);
+                  }
+                  if (hist['checkOut']?['timestamp'] != null) {
+                    checkOut = TimeOfDay.fromDateTime((hist['checkOut']['timestamp'] as Timestamp).toDate()).format(context);
+                  }
+                  Color color = Colors.grey;
+                  String statusLabel = status;
+                  if (status == 'present') { color = Colors.green; statusLabel = 'Hadir'; }
+                  else if (status == 'late') { color = Colors.orange; statusLabel = 'Terlambat'; }
+                  else if (status == 'permission') { color = Colors.blue; statusLabel = 'Izin'; }
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _buildRecentCard(hist['workDate'] ?? '--', checkIn, checkOut, statusLabel, color),
+                  );
+                }),
             ],
           ),
         ),

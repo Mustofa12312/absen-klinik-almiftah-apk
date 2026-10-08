@@ -99,7 +99,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               stream: FirebaseFirestore.instance
                   .collection('attendance')
                   .where('employeeId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                  .orderBy('date', descending: true)
+                  .orderBy('workDate', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -140,7 +140,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       if (ts != null) {
                          checkInTime = DateFormat('HH:mm').format(ts.toDate());
                       }
-                      lateMin = data['checkIn']['lateMinutes'] ?? 0;
+                      lateMin = data['lateMinutes'] ?? 0;
                     }
                     if (data['checkOut'] != null) {
                       final Timestamp? ts = data['checkOut']['timestamp'];
@@ -170,7 +170,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(data['date'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  Text(data['workDate'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                                   const SizedBox(height: 6),
                                   Row(
                                     children: [
