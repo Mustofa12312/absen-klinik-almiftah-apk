@@ -12,7 +12,7 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profil Saya'),
-        backgroundColor: const Color(0xFF138D5B),
+        backgroundColor: const Color(0xFFE06A00),
         foregroundColor: Colors.white,
       ),
       body: FutureBuilder<DocumentSnapshot>(
@@ -33,7 +33,7 @@ class ProfileScreen extends StatelessWidget {
                 // Header
                 Container(
                   width: double.infinity,
-                  color: const Color(0xFF138D5B),
+                  color: const Color(0xFFE06A00),
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
                   child: Column(
                     children: [
@@ -119,7 +119,7 @@ class ProfileScreen extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF138D5B))),
+            child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFFE06A00))),
           ),
           const Divider(height: 1),
           ...rows,

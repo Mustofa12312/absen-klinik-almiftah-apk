@@ -58,7 +58,7 @@ class _RequestScreenState extends State<RequestScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Pengajuan ${widget.requestType} berhasil dikirim! Menunggu persetujuan admin.'),
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFFE06A00),
             )
           );
           Navigator.pop(context);
@@ -87,7 +87,7 @@ class _RequestScreenState extends State<RequestScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Pengajuan ${widget.requestType}'),
-        backgroundColor: const Color(0xFF138D5B),
+        backgroundColor: const Color(0xFFE06A00),
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -171,7 +171,7 @@ class _RequestScreenState extends State<RequestScreen> {
                   hintText: 'Tuliskan alasan pengajuan Anda di sini...',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF138D5B), width: 2),
+                    borderSide: BorderSide(color: Color(0xFFE06A00), width: 2),
                   ),
                 ),
                 validator: (value) {
@@ -192,7 +192,7 @@ class _RequestScreenState extends State<RequestScreen> {
                   label: const Text('Unggah Berkas'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.all(16),
-                    side: const BorderSide(color: Color(0xFF138D5B)),
+                    side: const BorderSide(color: Color(0xFFE06A00)),
                   ),
                 ),
               ],
@@ -201,7 +201,7 @@ class _RequestScreenState extends State<RequestScreen> {
               FilledButton(
                 onPressed: _isLoading ? null : _submitRequest,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF138D5B),
+                  backgroundColor: const Color(0xFFE06A00),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),

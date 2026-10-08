@@ -38,7 +38,7 @@ class KlinikAlmiftahApp extends StatelessWidget {
       title: 'Klinik Al-Miftah',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF138D5B)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE06A00)),
         useMaterial3: true,
         fontFamily: 'sans-serif',
       ),
@@ -81,7 +81,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF138D5B),
+      backgroundColor: const Color(0xFFE06A00),
       body: FadeTransition(
         opacity: _fadeIn,
         child: Center(
@@ -197,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    backgroundColor: const Color(0xFF138D5B),
+                    backgroundColor: const Color(0xFFE06A00),
                   ),
                   child: _loading
                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -243,7 +243,7 @@ class _MainShellState extends State<MainShell> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
-        selectedItemColor: const Color(0xFF138D5B),
+        selectedItemColor: const Color(0xFFE06A00),
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         items: _navItems,
@@ -269,7 +269,7 @@ class RequestHubScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pengajuan'),
-        backgroundColor: const Color(0xFF138D5B),
+        backgroundColor: const Color(0xFFE06A00),
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
       ),
@@ -414,7 +414,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         } else {
           _hasCheckedIn = true;
           _statusAbsensi = 'Masuk pukul ${data['checkIn']?['timestamp'] != null ? TimeOfDay.fromDateTime((data['checkIn']['timestamp'] as Timestamp).toDate()).format(context) : '...'}';
-          _statusColor = Colors.green;
+          _statusColor = const Color(0xFFE06A00);
         }
       } else {
          _statusAbsensi = 'Belum Absen';
@@ -520,7 +520,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _hasCheckedIn = true;
           _statusAbsensi = 'Masuk pukul ${TimeOfDay.now().format(context)}';
-          _statusColor = Colors.green;
+          _statusColor = const Color(0xFFE06A00);
         });
       } else {
         await FirestoreService.checkOut(
@@ -538,7 +538,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(_hasCheckedIn ? '✓ Absensi Pulang Berhasil!' : '✓ Absensi Masuk Berhasil!'),
-        backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : Colors.green.shade700,
+        backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : const Color(0xFFE06A00),
       ));
     } catch (e) {
       if (Navigator.canPop(context)) _pop();
@@ -577,7 +577,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Header
               Row(
                 children: [
-                  const CircleAvatar(radius: 22, backgroundColor: Color(0xFF138D5B),
+                  const CircleAvatar(radius: 22, backgroundColor: Color(0xFFE06A00),
                     child: Icon(Icons.person, color: Colors.white, size: 24)),
                   const SizedBox(width: 12),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -626,7 +626,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           label: Text(isDone ? 'Absensi Selesai' : _hasCheckedIn ? 'ABSEN PULANG' : 'ABSEN MASUK'),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : const Color(0xFF138D5B),
+                            backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : const Color(0xFFE06A00),
                             disabledBackgroundColor: Colors.grey.shade300,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -644,7 +644,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Absensi Terakhir', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  TextButton(onPressed: () {}, child: const Text('Lihat Semua', style: TextStyle(color: Color(0xFF138D5B)))),
+                  TextButton(onPressed: () {}, child: const Text('Lihat Semua', style: TextStyle(color: Color(0xFFE06A00)))),
                 ],
               ),
               const SizedBox(height: 8),
@@ -666,7 +666,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }
                   Color color = Colors.grey;
                   String statusLabel = status;
-                  if (status == 'present') { color = Colors.green; statusLabel = 'Hadir'; }
+                  if (status == 'present') { color = const Color(0xFFE06A00); statusLabel = 'Hadir'; }
                   else if (status == 'late') { color = Colors.orange; statusLabel = 'Terlambat'; }
                   else if (status == 'permission') { color = Colors.blue; statusLabel = 'Izin'; }
                   

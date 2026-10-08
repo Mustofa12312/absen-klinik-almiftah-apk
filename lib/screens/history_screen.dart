@@ -16,7 +16,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'present': return Colors.green;
+      case 'present': return const Color(0xFFE06A00);
       case 'late': return Colors.orange;
       case 'absent': return Colors.red;
       case 'permission': return Colors.blue;
@@ -61,7 +61,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Riwayat Absensi'),
-        backgroundColor: const Color(0xFF138D5B),
+        backgroundColor: const Color(0xFFE06A00),
         foregroundColor: Colors.white,
       ),
       body: Column(
@@ -81,7 +81,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       label: Text(f),
                       selected: isSelected,
                       onSelected: (_) => setState(() => _selectedFilter = f),
-                      selectedColor: const Color(0xFF138D5B),
+                      selectedColor: const Color(0xFFE06A00),
                       checkmarkColor: Colors.white,
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.white : Colors.grey.shade700,
