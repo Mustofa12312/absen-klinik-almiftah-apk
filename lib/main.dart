@@ -357,6 +357,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadInitialData() async {
+    setState(() => _isLoading = true);
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
@@ -492,6 +493,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return; 
       }
 
+      // Simpan nilai sebelum update untuk pesan snackbar
+      final wasCheckedIn = _hasCheckedIn;
+      
       if (!_hasCheckedIn) {
         final now = DateTime.now();
         final parts = shiftStart.split(':');
@@ -537,8 +541,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(_hasCheckedIn ? '✓ Absensi Pulang Berhasil!' : '✓ Absensi Masuk Berhasil!'),
-        backgroundColor: _hasCheckedIn ? Colors.blue.shade700 : const Color(0xFFE06A00),
+        content: Text(wasCheckedIn ? '✓ Absensi Pulang Berhasil!' : '✓ Absensi Masuk Berhasil!'),
+        backgroundColor: wasCheckedIn ? Colors.blue.shade700 : const Color(0xFFE06A00),
       ));
     } catch (e) {
       if (Navigator.canPop(context)) _pop();
