@@ -128,8 +128,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
+      final phone = _emailCtrl.text.trim().replaceAll(' ', '');
+      final email = '${phone}@almiftah.com';
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailCtrl.text.trim(),
+        email: email,
         password: _passCtrl.text.trim(),
       );
       if (mounted) {
@@ -168,13 +170,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 48),
                 TextFormField(
                   controller: _emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: 'Nomor HP',
+                    prefixIcon: const Icon(Icons.phone_outlined),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (v) => (v == null || !v.contains('@')) ? 'Masukkan email valid' : null,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Masukkan Nomor HP' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
