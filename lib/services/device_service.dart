@@ -59,7 +59,19 @@ class DeviceService {
             return DeviceResult(isValid: false, message: 'Perangkat ini telah dinonaktifkan oleh Admin.');
           }
         } else {
-          return DeviceResult(isValid: false, message: 'Perangkat belum terdaftar. Hubungi Admin.');
+          // Device belum terdaftar: Auto-register (Device Binding) sesuai PRD
+          await FirebaseFirestore.instance.collection('devices').doc(deviceId).set({
+            'employeeId': user.uid,
+            'uid': user.uid,
+            'deviceId': deviceId,
+            'manufacturer': deviceName.split(' ').first,
+            'model': deviceName,
+            'androidVersion': Platform.isAndroid ? 'Android' : 'iOS',
+            'appVersion': '1.0.0', // Versi default/placeholder
+            'isActive': true,
+            'registeredAt': FieldValue.serverTimestamp(),
+            'lastSeenAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
         }
       }
 

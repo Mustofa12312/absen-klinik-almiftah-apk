@@ -24,10 +24,16 @@ class ProfileScreen extends StatelessWidget {
           final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
           final name = data['name'] ?? 'Pegawai';
           final role = data['role'] ?? 'Staff';
-          final employeeId = data['employeeId'] ?? 'EMP-XXX';
+          final employeeId = data['employeeId'] ?? snapshot.data?.id ?? 'EMP-XXX';
           final branchId = data['branchId'] ?? 'HQ-01';
 
-          return SingleChildScrollView(
+          return FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance.collection('branches').doc(branchId).get(),
+            builder: (context, branchSnapshot) {
+              final branchData = branchSnapshot.data?.data() as Map<String, dynamic>?;
+              final branchName = branchData?['name'] ?? branchId;
+
+              return SingleChildScrollView(
             child: Column(
               children: [
                 // Header
@@ -67,7 +73,7 @@ class ProfileScreen extends StatelessWidget {
                       ]),
                       const SizedBox(height: 12),
                       _buildInfoCard('Informasi Kerja', [
-                        _buildInfoRow(Icons.business_outlined, 'Cabang', branchId),
+                        _buildInfoRow(Icons.business_outlined, 'Cabang', branchName),
                         _buildInfoRow(Icons.schedule_outlined, 'Shift Aktif', 'Tergantung Jadwal'),
                         _buildInfoRow(Icons.check_circle_outline, 'Status', 'Aktif'),
                       ]),
@@ -101,6 +107,8 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           );
+          }
+        );
         }
       ),
     );

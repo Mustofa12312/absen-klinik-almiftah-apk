@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/firestore_service.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RequestScreen extends StatefulWidget {
   final String requestType;
@@ -29,27 +31,35 @@ class _RequestScreenState extends State<RequestScreen> {
       setState(() => _isLoading = true);
       try {
         final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) throw Exception('Pegawai belum login');
+        
+        final empDoc = await FirebaseFirestore.instance.collection('employees').doc(user.uid).get();
+        final branchId = empDoc.data()?['branchId'] ?? 'HQ-01';
+
         if (widget.requestType == 'Koreksi') {
-          // Asumsikan perbaikan jam masuk/keluar tidak tersedia di UI saat ini, hanya alasan
+          // Cari ID absensi asli pada tanggal tersebut untuk dikoreksi
+          final attQuery = await FirebaseFirestore.instance.collection('attendance')
+              .where('employeeId', isEqualTo: user.uid)
+              .where('workDate', isEqualTo: dateStr)
+              .limit(1).get();
+          
+          final attendanceId = attQuery.docs.isNotEmpty ? attQuery.docs.first.id : 'att_unknown';
+
           await FirestoreService.submitCorrection(
-            attendanceId: 'att_unknown', // Harus diambil dari histori, untuk MVP kita lewatkan atau butuh update UI
-            branchId: 'HQ-01',
+            attendanceId: attendanceId,
+            branchId: branchId,
             type: 'wrong_data',
             requestedCheckIn: '08:00',
             requestedCheckOut: '17:00',
             reason: _reasonController.text,
           );
         } else {
-          String type = 'permission';
-          if (widget.requestType == 'Sakit') type = 'sick';
-          if (widget.requestType == 'Cuti') type = 'leave';
-          if (widget.requestType == 'Dinas') type = 'business_trip';
-
           await FirestoreService.submitLeaveRequest(
-            branchId: 'HQ-01',
+            branchId: branchId,
             startDate: dateStr,
             endDate: dateStr,
-            type: type,
+            type: widget.requestType, // Menggunakan Title Case (Izin, Sakit, dsb) agar sesuai Admin
             reason: _reasonController.text,
           );
         }
