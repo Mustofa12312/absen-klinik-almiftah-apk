@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "664022797316",
+    "project_id": "klinik-almiftah",
+    "storage_bucket": "klinik-almiftah.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664022797316:android:e04124913f2dd44f6c7951",
+        "android_client_info": {
+          "package_name": "com.klinikalmiftah.absen.employee_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "664022797316-dpv1f4h83bghdn70d3hpld27fu19p5lp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlHEMzGbULjlHbCMtt1qhEFhLdB8VSwcc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "664022797316-dpv1f4h83bghdn70d3hpld27fu19p5lp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
