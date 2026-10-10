@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderSide: const BorderSide(color: Color(0xFFE06A00), width: 1.5),
                       ),
                     ),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Masukkan Nomor HP' : null,
+                    validator: (v) => (v == null || v.isEmpty) ? 'Masukkan Nomor HP atau Email' : null,
                   ),
                 ),
                 const SizedBox(height: 20),
