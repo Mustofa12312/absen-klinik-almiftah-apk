@@ -751,23 +751,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _pop();
 
       if (!inRange) {
-        // --- SEMENTARA DIMATIKAN UNTUK TESTING DI EMULATOR ---
-        // _showError(
-        //   'Anda berada di luar area klinik.\nPastikan Anda sudah di lokasi kerja.',
-        // );
-        // FirestoreService.logSecurityEvent(
-        //   type: 'outside_geofence',
-        //   branchId: branchId ?? 'unknown',
-        //   deviceId: deviceResult.deviceId ?? 'unknown',
-        // );
-        // return;
-        
-        // Tampilkan peringatan kecil saja tapi biarkan lewat
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Testing Mode: Lokasi luar area diabaikan.')),
-          );
-        }
+        _showError(
+          'Anda berada di luar area klinik.\nPastikan Anda sudah di lokasi kerja.',
+        );
+        FirestoreService.logSecurityEvent(
+          type: 'outside_geofence',
+          branchId: branchId ?? 'unknown',
+          deviceId: deviceResult.deviceId ?? 'unknown',
+        );
+        return;
       }
 
       // Simpan nilai sebelum update untuk pesan snackbar

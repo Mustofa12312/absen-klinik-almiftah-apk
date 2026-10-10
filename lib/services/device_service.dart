@@ -52,15 +52,24 @@ class DeviceService {
         final deviceDoc = await FirebaseFirestore.instance.collection('devices').doc(deviceId).get();
         if (deviceDoc.exists) {
           final data = deviceDoc.data()!;
-          if (data['employeeId'] != user.uid) {
-            return DeviceResult(isValid: false, message: 'Perangkat ini terdaftar untuk akun lain.');
+          if (data['isActive'] == true) {
+            if (data['employeeId'] != user.uid) {
+              return DeviceResult(isValid: false, message: 'Perangkat ini terdaftar untuk akun lain.');
+            }
+            // Device is valid and belongs to the user, proceed.
+            return DeviceResult(
+              isValid: true, 
+              message: 'Device aman', 
+              deviceId: deviceId, 
+              deviceName: deviceName
+            );
           }
-          if (data['isActive'] == false) {
-            return DeviceResult(isValid: false, message: 'Perangkat ini telah dinonaktifkan oleh Admin.');
-          }
-        } else {
-          // Device belum terdaftar: Auto-register (Device Binding) sesuai PRD
-          await FirebaseFirestore.instance.collection('devices').doc(deviceId).set({
+          // Jika isActive == false, berarti sudah di-reset admin.
+          // Aplikasi akan melanjutkan ke blok di bawah untuk mendaftarkan ulang (mengganti kepemilikan).
+        }
+
+        // Device belum terdaftar atau sudah di-reset: Auto-register (Device Binding) sesuai PRD
+        await FirebaseFirestore.instance.collection('devices').doc(deviceId).set({
             'employeeId': user.uid,
             'uid': user.uid,
             'deviceId': deviceId,
@@ -72,7 +81,6 @@ class DeviceService {
             'registeredAt': FieldValue.serverTimestamp(),
             'lastSeenAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
-        }
       }
 
       return DeviceResult(
