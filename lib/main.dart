@@ -18,10 +18,10 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.playIntegrity,
-      appleProvider: AppleProvider.deviceCheck,
-    );
+    // await FirebaseAppCheck.instance.activate(
+    //   androidProvider: AndroidProvider.playIntegrity,
+    //   appleProvider: AppleProvider.deviceCheck,
+    // );
   } catch (e) {
     debugPrint('Firebase init failed (dummy keys): $e');
   }

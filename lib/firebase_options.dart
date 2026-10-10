@@ -56,7 +56,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAKPNHGfP9YtT8Z9I-1tKXzt7QCoMRtRD0',
-    appId: '1:664022797316:android:a1b2c3d4e5f6g7h8i9j0k1', // Assuming android app id structure, dummy if unknown but using real project id
+    appId: '1:664022797316:web:eb378574e2469f8b6c7951', // Use Web App ID since Android App ID is unknown
     messagingSenderId: '664022797316',
     projectId: 'klinik-almiftah',
     storageBucket: 'klinik-almiftah.firebasestorage.app',
