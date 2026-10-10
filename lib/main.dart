@@ -128,8 +128,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final phone = _emailCtrl.text.trim().replaceAll(' ', '');
-      final email = '${phone}@almiftah.com';
+      String phone = _emailCtrl.text.trim().replaceAll(' ', '');
+      String email = phone.contains('@') ? phone : '$phone@almiftah.com';
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: _passCtrl.text.trim(),
@@ -137,10 +137,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainShell()));
       }
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
       if (mounted) {
+        String msg = 'Terjadi kesalahan. Silakan coba lagi.';
+        if (e is FirebaseAuthException) {
+          msg = e.message ?? 'Login gagal. Periksa email dan password Anda.';
+        } else {
+          msg = e.toString();
+        }
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.message ?? 'Login gagal. Periksa email dan password Anda.'),
+          content: Text(msg),
           backgroundColor: Colors.red,
         ));
       }

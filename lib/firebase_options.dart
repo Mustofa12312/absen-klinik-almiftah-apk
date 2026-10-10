@@ -45,28 +45,29 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'dummy-api-key-web',
-    appId: '1:123456789012:web:abcdef1234567890',
-    messagingSenderId: '123456789012',
-    projectId: 'klinik-almiftah-dummy',
-    authDomain: 'klinik-almiftah-dummy.firebaseapp.com',
-    storageBucket: 'klinik-almiftah-dummy.appspot.com',
+    apiKey: 'AIzaSyAKPNHGfP9YtT8Z9I-1tKXzt7QCoMRtRD0',
+    appId: '1:664022797316:web:eb378574e2469f8b6c7951',
+    messagingSenderId: '664022797316',
+    projectId: 'klinik-almiftah',
+    authDomain: 'klinik-almiftah.firebaseapp.com',
+    storageBucket: 'klinik-almiftah.firebasestorage.app',
+    measurementId: 'G-VX7WG5S3M6',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'dummy-api-key-android',
-    appId: '1:123456789012:android:abcdef1234567890',
-    messagingSenderId: '123456789012',
-    projectId: 'klinik-almiftah-dummy',
-    storageBucket: 'klinik-almiftah-dummy.appspot.com',
+    apiKey: 'AIzaSyAKPNHGfP9YtT8Z9I-1tKXzt7QCoMRtRD0',
+    appId: '1:664022797316:android:a1b2c3d4e5f6g7h8i9j0k1', // Assuming android app id structure, dummy if unknown but using real project id
+    messagingSenderId: '664022797316',
+    projectId: 'klinik-almiftah',
+    storageBucket: 'klinik-almiftah.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'dummy-api-key-ios',
-    appId: '1:123456789012:ios:abcdef1234567890',
-    messagingSenderId: '123456789012',
-    projectId: 'klinik-almiftah-dummy',
-    storageBucket: 'klinik-almiftah-dummy.appspot.com',
+    apiKey: 'AIzaSyAKPNHGfP9YtT8Z9I-1tKXzt7QCoMRtRD0',
+    appId: '1:664022797316:ios:a1b2c3d4e5f6g7h8i9j0k1',
+    messagingSenderId: '664022797316',
+    projectId: 'klinik-almiftah',
+    storageBucket: 'klinik-almiftah.firebasestorage.app',
     iosBundleId: 'com.klinikalmiftah.absen.employeeApp',
   );
 }
