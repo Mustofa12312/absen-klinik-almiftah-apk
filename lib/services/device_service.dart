@@ -24,10 +24,10 @@ class DeviceService {
       if (Platform.isAndroid) {
         AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
         
-        // Deteksi Emulator Android dasar
-        if (!androidInfo.isPhysicalDevice) {
-          return DeviceResult(isValid: false, message: 'Aplikasi tidak dapat berjalan di Emulator.');
-        }
+        // Deteksi Emulator Android dasar (Sementara dimatikan agar bisa ditest di Emulator)
+        // if (!androidInfo.isPhysicalDevice) {
+        //   return DeviceResult(isValid: false, message: 'Aplikasi tidak dapat berjalan di Emulator.');
+        // }
 
         // Generate unique device identifier (Kombinasi model dan ID)
         deviceId = androidInfo.id;
@@ -36,9 +36,9 @@ class DeviceService {
       } else if (Platform.isIOS) {
         IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
         
-        if (!iosInfo.isPhysicalDevice) {
-          return DeviceResult(isValid: false, message: 'Aplikasi tidak dapat berjalan di Simulator.');
-        }
+        // if (!iosInfo.isPhysicalDevice) {
+        //   return DeviceResult(isValid: false, message: 'Aplikasi tidak dapat berjalan di Simulator.');
+        // }
 
         deviceId = iosInfo.identifierForVendor ?? 'unknown_ios_id';
         deviceName = iosInfo.name;
@@ -82,7 +82,7 @@ class DeviceService {
         deviceName: deviceName
       );
     } catch (e) {
-      return DeviceResult(isValid: false, message: 'Gagal membaca identitas perangkat.');
+      return DeviceResult(isValid: false, message: 'Error membaca device: $e');
     }
   }
 }

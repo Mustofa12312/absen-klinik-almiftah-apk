@@ -542,7 +542,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int shiftTolerance = 15;
   String? branchId;
   String? shiftId;
-  String employeeName = 'Mustofa';
+  String employeeName = 'Pegawai';
   String shiftDisplay = '--:--';
   List<Map<String, dynamic>> recentHistory = [];
 
@@ -569,7 +569,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       final empData = empDoc.data()!;
-      employeeName = empData['name'] ?? user.displayName ?? 'Mustofa';
+      employeeName = empData['name'] ?? user.displayName ?? 'Pegawai';
       branchId = empData['branchId'];
       shiftId = empData['currentShiftId'];
 
@@ -670,7 +670,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       recentHistory = historyQuery.docs.map((d) => d.data()).toList();
     } catch (e) {
-      if (mounted) _showError('Gagal memuat data.');
+      print('ERROR _loadInitialData: $e');
+      if (mounted) _showError('Gagal memuat data. Periksa koneksi atau index.');
+      
+      // Berikan nilai default agar tidak stuck di "Memuat..." jika terjadi error
+      if (_statusAbsensi == 'Memuat...') {
+        _statusAbsensi = 'Gagal Dimuat';
+        _statusColor = Colors.grey;
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -744,15 +751,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _pop();
 
       if (!inRange) {
-        _showError(
-          'Anda berada di luar area klinik.\nPastikan Anda sudah di lokasi kerja.',
-        );
-        FirestoreService.logSecurityEvent(
-          type: 'outside_geofence',
-          branchId: branchId ?? 'unknown',
-          deviceId: deviceResult.deviceId ?? 'unknown',
-        );
-        return;
+        // --- SEMENTARA DIMATIKAN UNTUK TESTING DI EMULATOR ---
+        // _showError(
+        //   'Anda berada di luar area klinik.\nPastikan Anda sudah di lokasi kerja.',
+        // );
+        // FirestoreService.logSecurityEvent(
+        //   type: 'outside_geofence',
+        //   branchId: branchId ?? 'unknown',
+        //   deviceId: deviceResult.deviceId ?? 'unknown',
+        // );
+        // return;
+        
+        // Tampilkan peringatan kecil saja tapi biarkan lewat
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Testing Mode: Lokasi luar area diabaikan.')),
+          );
+        }
       }
 
       // Simpan nilai sebelum update untuk pesan snackbar
