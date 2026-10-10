@@ -571,7 +571,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final empData = empDoc.data()!;
       employeeName = empData['name'] ?? user.displayName ?? 'Mustofa';
       branchId = empData['branchId'];
-      shiftId = empData['currentShiftId'] ?? 'shift_1';
+      shiftId = empData['currentShiftId'];
 
       if (branchId != null) {
         final branchDoc = await FirebaseFirestore.instance
@@ -586,16 +586,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      if (shiftId != null) {
-        final shiftDoc = await FirebaseFirestore.instance
-            .collection('shifts')
-            .doc(shiftId)
-            .get();
-        if (shiftDoc.exists) {
-          final sData = shiftDoc.data()!;
-          shiftStart = sData['startTime'] ?? '08:00';
-          shiftTolerance = sData['toleranceMinutes'] ?? 15;
-          shiftDisplay = '${shiftStart} - ${sData['endTime'] ?? '--:--'}';
+      final shiftsSnap = await FirebaseFirestore.instance.collection('shifts').get();
+      if (shiftsSnap.docs.isNotEmpty) {
+        final now = DateTime.now();
+        final nowMinutes = now.hour * 60 + now.minute;
+        
+        Map<String, dynamic>? activeShift;
+        int minDiff = 24 * 60; // Max minutes in a day
+        String? foundShiftId;
+
+        for (var doc in shiftsSnap.docs) {
+          final sData = doc.data();
+          final start = sData['startTime'] as String? ?? '08:00';
+          final parts = start.split(':');
+          if (parts.length < 2) continue;
+          
+          final shiftMins = int.parse(parts[0]) * 60 + int.parse(parts[1]);
+          final diff = (shiftMins - nowMinutes).abs();
+          
+          final tolerance = sData['tolerance'] ?? sData['toleranceMinutes'] ?? 15;
+          final earlyBound = shiftMins - 60; // Can check in 1 hr before
+          final lateBound = shiftMins + tolerance;
+          
+          // Prioritaskan shift yang sedang aktif saat ini
+          if (nowMinutes >= earlyBound && nowMinutes <= lateBound) {
+            activeShift = sData;
+            foundShiftId = doc.id;
+            break; 
+          }
+          
+          // Jika tidak ada yang aktif, cari yang jamnya paling dekat (fallback)
+          if (diff < minDiff) {
+            minDiff = diff;
+            activeShift = sData;
+            foundShiftId = doc.id;
+          }
+        }
+        
+        if (activeShift != null) {
+          shiftId = foundShiftId;
+          shiftStart = activeShift['startTime'] ?? '08:00';
+          shiftTolerance = activeShift['tolerance'] ?? activeShift['toleranceMinutes'] ?? 15;
+          shiftDisplay = '${activeShift['name'] ?? 'Shift'} ($shiftStart - ${activeShift['endTime'] ?? '--:--'})';
         }
       }
 
@@ -864,29 +896,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Assalamualaikum Wr Wb,',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 14,
-                          letterSpacing: 0.2,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Assalamualaikum Wr Wb,',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                            letterSpacing: 0.2,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        employeeName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 20,
-                          color: Color(0xFF2D3142),
+                        const SizedBox(height: 2),
+                        Text(
+                          employeeName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            color: Color(0xFF2D3142),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -931,28 +967,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Shift Hari Ini',
-                              style: TextStyle(
-                                color: Colors.grey.shade500,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Shift Hari Ini',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              shiftDisplay,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 22,
-                                color: Color(0xFF2D3142),
+                              const SizedBox(height: 4),
+                              Text(
+                                shiftDisplay,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 22,
+                                  color: Color(0xFF2D3142),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 12),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
