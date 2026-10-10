@@ -686,9 +686,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       int.parse(parts[0]),
       int.parse(parts[1]),
     );
-    final toleranceTime = shiftTime.add(Duration(minutes: toleranceMins));
     final earlyBound = shiftTime.subtract(const Duration(minutes: 60));
-    return now.isAfter(earlyBound) && now.isBefore(toleranceTime);
+    
+    // Tidak lagi ditolak jika lewat batas toleransi. 
+    // Batas toleransi hanya dipakai untuk memberi status "Terlambat" di database.
+    // Selama dia absen setelah batas awal (earlyBound), izinkan masuk.
+    return now.isAfter(earlyBound);
   }
 
   Future<void> _prosesAbsen() async {
@@ -699,10 +702,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
-      // Validasi Shift
+      // Validasi Shift: Ditolak jika terlalu cepat (sebelum earlyBound)
       if (!_hasCheckedIn && !_isTimeValid(shiftStart, shiftTolerance)) {
         _showError(
-          'Di luar batas waktu absen.\nShift: $shiftStart | Toleransi: $shiftTolerance mnt',
+          'Belum masuk waktu absen.\nShift dimulai pukul: $shiftStart',
         );
         return;
       }
@@ -765,9 +768,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           int.parse(parts[0]),
           int.parse(parts[1]),
         );
-        final lateMinutes = now.difference(shiftTime).inMinutes > 0
-            ? now.difference(shiftTime).inMinutes
-            : 0;
+        final diffMins = now.difference(shiftTime).inMinutes;
+        final lateMinutes = diffMins > shiftTolerance ? diffMins : 0;
 
         // Cek double sebelum simpan
         final workDate =

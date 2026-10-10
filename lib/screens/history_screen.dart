@@ -59,33 +59,55 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text('Riwayat Absensi'),
+        title: const Text('Riwayat Absensi', style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: const Color(0xFFE06A00),
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: Column(
         children: [
           // Filter chip row
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               child: Row(
                 children: _filters.map((f) {
                   final isSelected = _selectedFilter == f;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(f),
-                      selected: isSelected,
-                      onSelected: (_) => setState(() => _selectedFilter = f),
-                      selectedColor: const Color(0xFFE06A00),
-                      checkmarkColor: Colors.white,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.grey.shade700,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      child: ChoiceChip(
+                        label: Text(f),
+                        selected: isSelected,
+                        onSelected: (_) => setState(() => _selectedFilter = f),
+                        selectedColor: const Color(0xFFE06A00),
+                        backgroundColor: Colors.grey.shade100,
+                        showCheckmark: false,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : Colors.grey.shade600,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          side: BorderSide.none,
+                        ),
                       ),
                     ),
                   );
@@ -93,7 +115,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ),
-          const Divider(height: 1),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -103,10 +124,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator(color: Color(0xFFE06A00)));
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Terjadi kesalahan: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+                  return Center(
+                    child: Text(
+                      'Terjadi kesalahan:\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
                 }
 
                 final docs = snapshot.data?.docs ?? [];
@@ -117,13 +144,45 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     : docs.where((d) => (d.data() as Map<String, dynamic>)['status'] == filterValue).toList();
 
                 if (filteredDocs.isEmpty) {
-                  return const Center(child: Text('Tidak ada data untuk filter ini.', style: TextStyle(color: Colors.grey)));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              )
+                            ]
+                          ),
+                          child: Icon(Icons.history_rounded, size: 64, color: Colors.grey.shade300),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Belum Ada Riwayat',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.grey.shade700),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tidak ada data untuk filter "$_selectedFilter"',
+                          style: TextStyle(color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 return ListView.separated(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
+                  physics: const BouncingScrollPhysics(),
                   itemCount: filteredDocs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final data = filteredDocs[index].data() as Map<String, dynamic>;
                     
@@ -131,8 +190,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     final Color color = _getStatusColor(status);
                     final String statusLabel = _getStatusLabel(status);
                     
-                    String checkInTime = '--';
-                    String checkOutTime = '--';
+                    String checkInTime = '--:--';
+                    String checkOutTime = '--:--';
                     int lateMin = 0;
                     
                     if (data['checkIn'] != null) {
@@ -152,50 +211,105 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     return Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 60,
-                              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(data['workDate'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                  const SizedBox(height: 6),
-                                  Row(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                color: color,
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Icon(Icons.login, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 4),
-                                      Text('Masuk: $checkInTime', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                                      const SizedBox(width: 16),
-                                      const Icon(Icons.logout, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 4),
-                                      Text('Pulang: $checkOutTime', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            data['workDate'] ?? '-',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 16,
+                                              color: Color(0xFF2D3142),
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: color.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: Text(
+                                              statusLabel,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: color,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildTimeCol('Masuk', checkInTime, Icons.login_rounded),
+                                          ),
+                                          Container(
+                                            width: 1,
+                                            height: 30,
+                                            color: Colors.grey.shade200,
+                                          ),
+                                          Expanded(
+                                            child: _buildTimeCol('Pulang', checkOutTime, Icons.logout_rounded),
+                                          ),
+                                        ],
+                                      ),
+                                      if (lateMin > 0) ...[
+                                        const SizedBox(height: 12),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.warning_rounded, size: 14, color: Colors.red.shade400),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'Terlambat $lateMin menit',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.red.shade700,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      ],
                                     ],
                                   ),
-                                  if (lateMin > 0) ...[
-                                    const SizedBox(height: 4),
-                                    Text('Terlambat $lateMin menit', style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
-                                  ],
-                                ],
+                                ),
                               ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
-                              child: Text(statusLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -206,6 +320,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTimeCol(String label, String time, IconData icon) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: Colors.grey.shade500),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          time,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2D3142),
+          ),
+        ),
+      ],
     );
   }
 }
