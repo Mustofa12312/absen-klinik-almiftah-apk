@@ -1,5 +1,4 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:trust_location/trust_location.dart';
 
 class LocationResult {
   final bool isValid;
@@ -34,25 +33,18 @@ class LocationService {
       return LocationResult(isValid: false, message: 'Izin lokasi ditolak permanen, kami tidak dapat meminta izin.');
     }
 
-    // 3. Deteksi Mock Location (Fake GPS) menggunakan trust_location
-    bool isMockLocation = false;
-    try {
-      TrustLocation.start(5);
-      isMockLocation = await TrustLocation.isMockLocation;
-      TrustLocation.stop();
-    } catch (e) {
-      return LocationResult(isValid: false, message: 'Gagal mendeteksi integritas lokasi.');
-    }
+    // 3 & 4. Ambil lokasi dengan tingkat akurasi tinggi
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
 
-    if (isMockLocation) {
+    // Deteksi Mock Location (Fake GPS) menggunakan property isMocked dari Geolocator
+    if (position.isMocked) {
       // BR-06: Mock Location terdeteksi -> Absensi Ditolak
       return LocationResult(isValid: false, message: 'Fake GPS / Mock Location terdeteksi! Absensi dibatalkan demi keamanan.');
     }
 
-    // 4. Ambil lokasi dengan tingkat akurasi tinggi
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+
 
     // 5. Cek akurasi (BR-05)
     if (position.accuracy > maxAccuracy) {
