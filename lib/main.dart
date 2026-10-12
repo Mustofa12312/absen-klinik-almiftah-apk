@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'firebase_options.dart';
@@ -11,6 +10,7 @@ import 'services/firestore_service.dart';
 import 'screens/history_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/request_screen.dart';
+import 'services/error_utils.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -164,14 +164,13 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        String msg = 'Terjadi kesalahan. Silakan coba lagi.';
-        if (e is FirebaseAuthException) {
-          msg = e.message ?? 'Login gagal. Periksa email dan password Anda.';
-        } else {
-          msg = e.toString();
-        }
+        String msg = getIndonesianErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -671,7 +670,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       recentHistory = historyQuery.docs.map((d) => d.data()).toList();
     } catch (e) {
       print('ERROR _loadInitialData: $e');
-      if (mounted) _showError('Gagal memuat data. Periksa koneksi atau index.');
+      if (mounted) _showError('Gagal memuat data: ${getIndonesianErrorMessage(e)}');
       
       // Berikan nilai default agar tidak stuck di "Memuat..." jika terjadi error
       if (_statusAbsensi == 'Memuat...') {
@@ -837,7 +836,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     } catch (e) {
       if (Navigator.canPop(context)) _pop();
-      _showError('Terjadi kesalahan pada sistem.');
+      _showError('Gagal melakukan absensi: ${getIndonesianErrorMessage(e)}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

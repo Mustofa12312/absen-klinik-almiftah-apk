@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import '../services/error_utils.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -128,10 +129,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 }
                 if (snapshot.hasError) {
                   return Center(
-                    child: Text(
-                      'Terjadi kesalahan:\n${snapshot.error}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(
+                        'Terjadi kesalahan:\n${getIndonesianErrorMessage(snapshot.error)}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     ),
                   );
                 }

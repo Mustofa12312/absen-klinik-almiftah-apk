@@ -39,10 +39,13 @@ class LocationService {
     );
 
     // Deteksi Mock Location (Fake GPS) menggunakan property isMocked dari Geolocator
-    // if (position.isMocked) {
-    //   // BR-06: Mock Location terdeteksi -> Absensi Ditolak
-    //   return LocationResult(isValid: false, message: 'Fake GPS / Mock Location terdeteksi! Absensi dibatalkan demi keamanan.');
-    // }
+    if (position.isMocked) {
+      // BR-06: Mock Location terdeteksi -> Absensi Ditolak
+      return LocationResult(
+        isValid: false,
+        message: 'Fake GPS / Lokasi Palsu terdeteksi! Absensi dibatalkan demi keamanan.',
+      );
+    }
 
 
 

@@ -3,6 +3,7 @@ import '../services/firestore_service.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/error_utils.dart';
 
 class RequestScreen extends StatefulWidget {
   final String requestType;
@@ -76,7 +77,10 @@ class _RequestScreenState extends State<RequestScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Gagal mengirim pengajuan:\n${getIndonesianErrorMessage(e)}'),
+              backgroundColor: Colors.red.shade700,
+            ),
           );
         }
       } finally {
