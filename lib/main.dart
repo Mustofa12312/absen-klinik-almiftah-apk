@@ -1153,12 +1153,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     checkIn = TimeOfDay.fromDateTime(
                       (hist['checkIn']['timestamp'] as Timestamp).toDate(),
                     ).format(context);
+                  } else if (hist['checkInTime'] != null) {
+                    try {
+                      final dt = DateTime.parse(hist['checkInTime'].toString()).toLocal();
+                      checkIn = TimeOfDay.fromDateTime(dt).format(context);
+                    } catch (_) {}
                   }
+
                   if (hist['checkOut']?['timestamp'] != null) {
                     checkOut = TimeOfDay.fromDateTime(
                       (hist['checkOut']['timestamp'] as Timestamp).toDate(),
                     ).format(context);
+                  } else if (hist['checkOutTime'] != null) {
+                    try {
+                      final dt = DateTime.parse(hist['checkOutTime'].toString()).toLocal();
+                      checkOut = TimeOfDay.fromDateTime(dt).format(context);
+                    } catch (_) {}
                   }
+
                   Color color = Colors.grey;
                   String statusLabel = status;
                   if (status == 'present') {
@@ -1175,7 +1187,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _buildRecentCard(
-                      hist['workDate'] ?? '--',
+                      hist['workDate'] ?? hist['date'] ?? '--',
                       checkIn,
                       checkOut,
                       statusLabel,

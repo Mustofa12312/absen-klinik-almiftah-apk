@@ -198,18 +198,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     String checkOutTime = '--:--';
                     int lateMin = 0;
                     
-                    if (data['checkIn'] != null) {
+                    if (data['checkIn'] != null && data['checkIn']['timestamp'] != null) {
                       final Timestamp? ts = data['checkIn']['timestamp'];
                       if (ts != null) {
                          checkInTime = DateFormat('HH:mm').format(ts.toDate());
                       }
                       lateMin = data['lateMinutes'] ?? 0;
+                    } else if (data['checkInTime'] != null) {
+                      try {
+                        final dt = DateTime.parse(data['checkInTime'].toString());
+                        checkInTime = DateFormat('HH:mm').format(dt.toLocal());
+                      } catch (_) {}
                     }
-                    if (data['checkOut'] != null) {
+                    if (data['checkOut'] != null && data['checkOut']['timestamp'] != null) {
                       final Timestamp? ts = data['checkOut']['timestamp'];
                       if (ts != null) {
                          checkOutTime = DateFormat('HH:mm').format(ts.toDate());
                       }
+                    } else if (data['checkOutTime'] != null) {
+                      try {
+                        final dt = DateTime.parse(data['checkOutTime'].toString());
+                        checkOutTime = DateFormat('HH:mm').format(dt.toLocal());
+                      } catch (_) {}
                     }
 
                     return Container(
@@ -243,7 +253,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            data['workDate'] ?? '-',
+                                            data['workDate'] ?? data['date'] ?? '-',
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w800,
                                               fontSize: 16,
@@ -279,7 +289,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                             color: Colors.grey.shade200,
                                           ),
                                           Expanded(
-                                            child: _buildTimeCol('Pulang', checkOutTime, Icons.logout_rounded),
+                                            child: _buildTimeCol('Keluar', checkOutTime, Icons.logout_rounded),
                                           ),
                                         ],
                                       ),
