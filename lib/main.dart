@@ -826,7 +826,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         SnackBar(
           content: Text(
             wasCheckedIn
-                ? '✓ Absensi Pulang Berhasil!'
+                ? '✓ Absensi Keluar Berhasil!'
                 : '✓ Absensi Masuk Berhasil!',
           ),
           backgroundColor: wasCheckedIn
@@ -1063,7 +1063,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           isDone
                               ? 'Absensi Selesai'
                               : _hasCheckedIn
-                              ? 'ABSEN PULANG'
+                              ? 'ABSEN KELUAR'
                               : 'ABSEN MASUK',
                           style: const TextStyle(
                             color: Colors.white,
