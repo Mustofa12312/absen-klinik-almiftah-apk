@@ -651,8 +651,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _hasCheckedIn = true;
         } else {
           _hasCheckedIn = true;
-          _statusAbsensi =
-              'Masuk pukul ${data['checkIn']?['timestamp'] != null ? TimeOfDay.fromDateTime((data['checkIn']['timestamp'] as Timestamp).toDate()).format(context) : '...'}';
+          final inTime = data['checkIn']?['timestamp'] != null
+              ? (data['checkIn']['timestamp'] as Timestamp).toDate()
+              : null;
+          final formattedTime = inTime != null
+              ? '${inTime.hour.toString().padLeft(2, '0')}:${inTime.minute.toString().padLeft(2, '0')}'
+              : '...';
+          _statusAbsensi = 'Masuk pukul $formattedTime';
           _statusColor = const Color(0xFFE06A00);
         }
       } else {
@@ -669,7 +674,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       recentHistory = historyQuery.docs.map((d) => d.data()).toList();
     } catch (e) {
-      print('ERROR _loadInitialData: $e');
+      debugPrint('ERROR _loadInitialData: $e');
       if (mounted) _showError('Gagal memuat data: ${getIndonesianErrorMessage(e)}');
       
       // Berikan nilai default agar tidak stuck di "Memuat..." jika terjadi error
@@ -822,6 +827,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -835,6 +841,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       if (Navigator.canPop(context)) _pop();
       _showError('Gagal melakukan absensi: ${getIndonesianErrorMessage(e)}');
     } finally {

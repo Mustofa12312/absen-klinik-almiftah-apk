@@ -35,7 +35,7 @@ class LocationService {
 
     // 3 & 4. Ambil lokasi dengan tingkat akurasi tinggi
     Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
     // Deteksi Mock Location (Fake GPS) menggunakan property isMocked dari Geolocator

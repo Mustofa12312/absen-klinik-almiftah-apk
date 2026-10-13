@@ -186,7 +186,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   padding: const EdgeInsets.all(20),
                   physics: const BouncingScrollPhysics(),
                   itemCount: filteredDocs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final data = filteredDocs[index].data() as Map<String, dynamic>;
                     
