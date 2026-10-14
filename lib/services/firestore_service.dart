@@ -93,6 +93,7 @@ class FirestoreService {
       'action': 'attendance_blocked',
       'metadata': metadata ?? {},
       'createdAt': FieldValue.serverTimestamp(),
+      'timestamp': FieldValue.serverTimestamp(),
     });
   }
 
@@ -100,6 +101,7 @@ class FirestoreService {
   static Future<void> submitCorrection({
     required String attendanceId,
     required String branchId,
+    required String date,
     required String type, // missing_check_in | missing_check_out | wrong_data
     required String reason,
     String? requestedCheckIn,
@@ -112,6 +114,8 @@ class FirestoreService {
       'employeeId': user.uid,
       'attendanceId': attendanceId,
       'branchId': branchId,
+      'date': date,
+      'workDate': date,
       'type': type,
       'requestedCheckIn': requestedCheckIn,
       'requestedCheckOut': requestedCheckOut,
@@ -141,6 +145,7 @@ class FirestoreService {
       'employeeId': user.uid,
       'branchId': branchId,
       'type': type,
+      'date': startDate,
       'startDate': startDate,
       'endDate': endDate,
       'reason': reason,

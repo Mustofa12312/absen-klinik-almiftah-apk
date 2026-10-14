@@ -49,6 +49,23 @@ class DeviceService {
 
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        // Cek apakah akun pegawai sudah terikat pada perangkat aktif lain (BR-08)
+        final existingUserDevices = await FirebaseFirestore.instance
+            .collection('devices')
+            .where('employeeId', isEqualTo: user.uid)
+            .where('isActive', isEqualTo: true)
+            .get();
+
+        for (final doc in existingUserDevices.docs) {
+          if (doc.id != deviceId) {
+            final activeModel = (doc.data()['model'] as String?) ?? 'Perangkat Lain';
+            return DeviceResult(
+              isValid: false,
+              message: 'Akun Anda sudah terikat pada perangkat lain ($activeModel). Silakan hubungi Super Admin untuk reset perangkat (BR-08).',
+            );
+          }
+        }
+
         final deviceDoc = await FirebaseFirestore.instance.collection('devices').doc(deviceId).get();
         if (deviceDoc.exists) {
           final data = deviceDoc.data()!;
@@ -56,7 +73,13 @@ class DeviceService {
             if (data['employeeId'] != user.uid) {
               return DeviceResult(isValid: false, message: 'Perangkat ini terdaftar untuk akun lain.');
             }
-            // Device is valid and belongs to the user, proceed.
+            // Update last seen
+            try {
+              await deviceDoc.reference.update({
+                'lastSeenAt': FieldValue.serverTimestamp(),
+              });
+            } catch (_) {}
+
             return DeviceResult(
               isValid: true, 
               message: 'Device aman', 
@@ -65,22 +88,31 @@ class DeviceService {
             );
           }
           // Jika isActive == false, berarti sudah di-reset admin.
-          // Aplikasi akan melanjutkan ke blok di bawah untuk mendaftarkan ulang (mengganti kepemilikan).
+          // Aplikasi akan mendaftarkan ulang perangkat ini di blok bawah.
         }
 
-        // Device belum terdaftar atau sudah di-reset: Auto-register (Device Binding) sesuai PRD
+        // Device belum terdaftar atau sudah di-reset: Auto-register (Device Binding) sesuai PRD Bab 50, BR-08
         await FirebaseFirestore.instance.collection('devices').doc(deviceId).set({
-            'employeeId': user.uid,
-            'uid': user.uid,
+          'employeeId': user.uid,
+          'uid': user.uid,
+          'deviceId': deviceId,
+          'manufacturer': deviceName.split(' ').first,
+          'model': deviceName,
+          'androidVersion': Platform.isAndroid ? 'Android' : 'iOS',
+          'appVersion': '1.0.0',
+          'isActive': true,
+          'registeredAt': FieldValue.serverTimestamp(),
+          'lastSeenAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        // Sinkronisasi status deviceBound ke dokumen pegawai
+        try {
+          await FirebaseFirestore.instance.collection('employees').doc(user.uid).update({
+            'deviceBound': true,
             'deviceId': deviceId,
-            'manufacturer': deviceName.split(' ').first,
-            'model': deviceName,
-            'androidVersion': Platform.isAndroid ? 'Android' : 'iOS',
-            'appVersion': '1.0.0', // Versi default/placeholder
-            'isActive': true,
-            'registeredAt': FieldValue.serverTimestamp(),
-            'lastSeenAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+            'deviceName': deviceName,
+          });
+        } catch (_) {}
       }
 
       return DeviceResult(

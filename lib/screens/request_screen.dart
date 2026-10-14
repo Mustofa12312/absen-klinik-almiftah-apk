@@ -50,6 +50,7 @@ class _RequestScreenState extends State<RequestScreen> {
           await FirestoreService.submitCorrection(
             attendanceId: attendanceId,
             branchId: branchId,
+            date: dateStr,
             type: 'wrong_data',
             requestedCheckIn: '08:00',
             requestedCheckOut: '17:00',
